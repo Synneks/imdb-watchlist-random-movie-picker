@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isMovieType, parseImdbWatchlistCsv } from "./csv";
+import { enrichTitle } from "./enrich";
 import { clearWatchlist, loadWatchlist, saveWatchlist } from "./storage";
 import type { Title } from "./types";
 
@@ -56,6 +57,49 @@ export default function Picker() {
     setMode("ready");
     setStatus(`${stored.items.length} titles saved`);
   }, []);
+
+  useEffect(() => {
+    if (!picked?.id) return;
+    if (picked.poster && picked.stars.length) return;
+
+    let cancelled = false;
+    enrichTitle(picked.id).then((enrichment) => {
+      if (cancelled) return;
+      if (!enrichment.poster && !enrichment.stars.length) return;
+
+      setPicked((current) => {
+        if (!current || current.id !== picked.id) return current;
+        return {
+          ...current,
+          poster: enrichment.poster ?? current.poster,
+          stars: enrichment.stars.length ? enrichment.stars : current.stars,
+        };
+      });
+
+      setItems((current) => {
+        const next = current.map((item) =>
+          item.id === picked.id
+            ? {
+                ...item,
+                poster: enrichment.poster ?? item.poster,
+                stars: enrichment.stars.length ? enrichment.stars : item.stars,
+              }
+            : item
+        );
+        saveWatchlist({
+          items: next,
+          moviesOnly,
+          importedAt: Date.now(),
+          fileName,
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName]);
 
   const pool = useMemo(() => {
     if (!moviesOnly) return items;
@@ -236,7 +280,11 @@ function MovieDetails({ movie }: { movie: Title }) {
   return (
     <>
       <div className="result-top">
-        <div className="poster placeholder" aria-hidden="true" />
+        {movie.poster ? (
+          <img className="poster" src={movie.poster} alt="" loading="lazy" />
+        ) : (
+          <div className="poster placeholder" aria-hidden="true" />
+        )}
         <div className="result-body">
           <h2>{movie.title}</h2>
           {metaParts.length ? <p className="meta">{metaParts.join(" · ")}</p> : null}
