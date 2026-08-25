@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://synneks.github.io/imdb-watchlist-random-movie-picker/sitemap.xml

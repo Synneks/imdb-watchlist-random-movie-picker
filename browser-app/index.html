@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IMDb Watchlist Random Movie Picker — What to watch?</title>
+    <meta
+      name="description"
+      content="Can't decide what to watch? Import your IMDb watchlist CSV and pick a random movie or TV show. Free, no login, runs in your browser."
+    />
+    <meta
+      name="keywords"
+      content="IMDb watchlist random picker, random movie from watchlist, IMDb CSV export, what to watch tonight, random film picker"
+    />
+    <link rel="canonical" href="https://synneks.github.io/imdb-watchlist-random-movie-picker/" />
+    <meta name="robots" content="index, follow" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What to watch? IMDb Watchlist Random Picker" />
+    <meta
+      property="og:description"
+      content="Import your IMDb watchlist CSV and pick a random title. Free, no account, private in your browser."
+    />
+    <meta
+      property="og:url"
+      content="https://synneks.github.io/imdb-watchlist-random-movie-picker/"
+    />
+    <meta
+      property="og:image"
+      content="https://synneks.github.io/imdb-watchlist-random-movie-picker/icon128.png"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="What to watch? IMDb Watchlist Random Picker" />
+    <meta
+      name="twitter:description"
+      content="Import your IMDb watchlist CSV and pick a random movie or show."
+    />
+
+    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icon128.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Karla:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "IMDb Watchlist Random Movie Picker",
+        "alternateName": "What to watch?",
+        "url": "https://synneks.github.io/imdb-watchlist-random-movie-picker/",
+        "description": "Pick a random movie or TV show from your IMDb watchlist by uploading the official IMDb CSV export. No login required.",
+        "applicationCategory": "EntertainmentApplication",
+        "operatingSystem": "Any",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Import IMDb watchlist CSV",
+          "Pick a random title",
+          "Optional movies-only filter",
+          "Saves the list in your browser"
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#picker">Skip to picker</a>
+
+    <header class="hero">
+      <p class="brand">What to watch?</p>
+      <p class="lede">
+        Import your IMDb watchlist and let chance pick the next movie or show.
+      </p>
+    </header>
+
+    <div id="picker"></div>
+
+    <section id="how-to" class="how-to">
+      <h2>How to export your IMDb watchlist CSV</h2>
+      <p>
+        IMDb does not let websites read your watchlist directly. Export a CSV from the desktop
+        site, then upload it here. Takes about a minute.
+      </p>
+      <ol>
+        <li>
+          Open
+          <a href="https://www.imdb.com/list/watchlist" rel="noopener noreferrer" target="_blank"
+            >your IMDb watchlist</a
+          >
+          on a computer (export is not available in the IMDb app).
+        </li>
+        <li>Log in if you are not already signed in.</li>
+        <li>
+          Open the <strong>three-dot menu (⋯)</strong> in the top-right of the list, then choose
+          <strong>Export</strong>.
+        </li>
+        <li>
+          Save the downloaded <code>.csv</code> file (often named something like
+          <code>WATCHLIST.csv</code>).
+        </li>
+        <li>Come back here and click <strong>Import watchlist</strong> to upload that file.</li>
+      </ol>
+      <p>
+        Your file stays on this device in local storage. Nothing is uploaded to a server.
+      </p>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2>FAQ</h2>
+      <h3>Is this an official IMDb tool?</h3>
+      <p>
+        No. It is a free helper that uses IMDb’s own CSV export. Titles open back on IMDb.
+      </p>
+      <h3>Does it work with custom lists?</h3>
+      <p>
+        Yes. Export any IMDb list the same way (⋯ → Export) and upload that CSV.
+      </p>
+      <h3>Why is there no poster or plot?</h3>
+      <p>
+        The official CSV includes title, year, rating, runtime, and directors — not posters, plot,
+        Metascore, or cast. Those stay on IMDb.
+      </p>
+    </section>
+
+    <footer class="site-footer">
+      <p>
+        Not affiliated with IMDb or Amazon. Watchlist data never leaves your browser.
+      </p>
+    </footer>
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
