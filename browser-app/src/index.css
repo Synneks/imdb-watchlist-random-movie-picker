@@ -1,4 +1,9 @@
 :root {
+  color-scheme: dark;
+  --glow: rgba(245, 197, 24, 0.16);
+  --side-glow: rgba(90, 40, 20, 0.35);
+  --bg-top: #100e0b;
+  --bg-bottom: #0c0b09;
   --bg: #14110d;
   --bg-2: #1c1812;
   --surface: #241f18;
@@ -26,9 +31,9 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   background:
-    radial-gradient(1200px 520px at 50% -8%, rgba(245, 197, 24, 0.16), transparent 55%),
-    radial-gradient(800px 400px at 100% 20%, rgba(90, 40, 20, 0.35), transparent 50%),
-    linear-gradient(180deg, #100e0b 0%, var(--bg) 28%, #0c0b09 100%);
+    radial-gradient(1200px 520px at 50% -8%, var(--glow), transparent 55%),
+    radial-gradient(800px 400px at 100% 20%, var(--side-glow), transparent 50%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 28%, var(--bg-bottom) 100%);
 }
 
 body::before {
@@ -207,7 +212,7 @@ body > * {
 }
 
 .poster.placeholder {
-  background: linear-gradient(180deg, #3a3328, #1c1812);
+  background: linear-gradient(180deg, var(--border), var(--bg-2));
 }
 
 .result-body {
@@ -363,4 +368,92 @@ body > * {
   .hero {
     padding-top: 32px;
   }
+}
+
+/* A root attribute themes React and the separately authored page together. */
+:root[data-provider="letterboxd"] {
+  --bg: #141c24;
+  --bg-2: #1c2935;
+  --bg-top: #202c38;
+  --bg-bottom: #10171e;
+  --surface: #263644;
+  --text: #eef3f7;
+  --muted: #b0c0cd;
+  --accent: #40dc78;
+  --accent-text: #0b2315;
+  --danger: #ff9d99;
+  --border: #4c6273;
+  --glow: rgba(0, 224, 84, 0.12);
+  --side-glow: rgba(64, 170, 255, 0.16);
+}
+
+:root[data-provider="letterboxd"] .brand {
+  color: var(--text);
+  border-bottom: 4px solid var(--accent);
+  padding-bottom: 16px;
+}
+
+:root[data-provider="letterboxd"] .picker,
+:root[data-provider="letterboxd"] .faq {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+:root[data-provider="letterboxd"] .how-to h2 {
+  color: #75caff;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+.provider-switch {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+}
+
+.provider-switch legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.provider-option:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 700;
+}
+
+:root:not([data-provider="letterboxd"]) [data-provider-content="letterboxd"],
+:root[data-provider="letterboxd"] [data-provider-content="imdb"] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+  html { scroll-behavior: auto; }
 }
