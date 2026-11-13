@@ -1,4 +1,8 @@
+export type Provider = "imdb" | "letterboxd";
+
 export type Title = {
+  provider: Provider;
+  imdbId?: string;
   id: string;
   title: string;
   year: number | null;
@@ -16,6 +20,8 @@ export type Title = {
 };
 
 export type StoredWatchlist = {
+  provider: Provider;
+  importWarnings?: string[];
   items: Title[];
   moviesOnly: boolean;
   importedAt: number;

@@ -1,6 +1,6 @@
-import type { Title } from "./types";
+import type { Provider, Title } from "./types";
 
-function parseCsv(text: string): string[][] {
+export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -55,12 +55,13 @@ function parseCsv(text: string): string[][] {
     field += char;
   }
 
+  if (inQuotes) throw new Error("Malformed CSV: an opening quote has no closing quote.");
   row.push(field);
   if (row.some((cell) => cell.trim() !== "")) rows.push(row);
   return rows;
 }
 
-function normalizeHeader(header: string): string {
+export function normalizeHeader(header: string): string {
   return header.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
@@ -136,6 +137,8 @@ export function parseImdbWatchlistCsv(text: string): Title[] {
     if (!url) continue;
 
     items.push({
+      provider: "imdb",
+      imdbId: /^tt\d+$/i.test(constId) ? constId.toLowerCase() : undefined,
       id,
       title,
       year: parseNumber(cell(row, yearIndex)),
@@ -164,4 +167,61 @@ export function isMovieType(type: string | null): boolean {
   if (!type) return true;
   const normalized = type.replace(/\s+/g, "").toLowerCase();
   return normalized === "movie" || normalized === "tvmovie";
+}
+
+/** Normalize film links without fetching redirects. Short-link identity is case sensitive. */
+export function normalizeLetterboxdUrl(value: string): { id: string; url: string } | null {
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.port) return null;
+    if (url.hostname === "boxd.it" && /^\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) {
+      const code = url.pathname.split("/")[1];
+      return { id: `letterboxd:boxd:${code}`, url: `https://boxd.it/${code}` };
+    }
+    if (!["letterboxd.com", "www.letterboxd.com"].includes(url.hostname)) return null;
+    const match = url.pathname.match(/^\/film\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/i);
+    if (!match) return null;
+    const slug = match[1].toLowerCase();
+    return { id: `letterboxd:${slug}`, url: `https://letterboxd.com/film/${slug}/` };
+  } catch {
+    return null;
+  }
+}
+
+export function parseLetterboxdWatchlistCsv(text: string): Title[] {
+  const rows = parseCsv(text);
+  const headers = (rows[0] ?? []).map(normalizeHeader);
+  const nameIndex = headers.indexOf("name");
+  const uriIndex = headers.indexOf("letterboxd uri");
+  if (nameIndex < 0 || uriIndex < 0) {
+    throw new Error("Unsupported Letterboxd watchlist CSV. Extract watchlist.csv from your account export (Name and Letterboxd URI columns are required).");
+  }
+  const items: Title[] = [];
+  const seen = new Set<string>();
+  for (const row of rows.slice(1)) {
+    const title = cell(row, nameIndex);
+    const identity = normalizeLetterboxdUrl(cell(row, uriIndex));
+    if (!title || !identity || seen.has(identity.id)) continue;
+    seen.add(identity.id);
+    const year = parseNumber(cell(row, headers.indexOf("year")));
+    items.push({
+      ...identity, provider: "letterboxd", title,
+      year: year != null && Number.isInteger(year) && year > 0 ? year : null,
+      rating: null, voteCount: null, type: null, runtime: null,
+      director: null, stars: [], plot: null, poster: null, metascore: null, certificate: null,
+    });
+  }
+  if (!items.length) throw new Error("No valid films found in that Letterboxd watchlist CSV. Rows need a name and a Letterboxd film link.");
+  return items;
+}
+
+export function parseWatchlistCsv(text: string): { provider: Provider; items: Title[] } {
+  const headers = (parseCsv(text)[0] ?? []).map(normalizeHeader);
+  if (headers.includes("letterboxd uri")) {
+    return { provider: "letterboxd", items: parseLetterboxdWatchlistCsv(text) };
+  }
+  if (headers.some((header) => ["const", "imdb id", "tconst", "url", "title url"].includes(header))) {
+    return { provider: "imdb", items: parseImdbWatchlistCsv(text) };
+  }
+  throw new Error("Unsupported or empty CSV. Import an IMDb list export or the extracted Letterboxd watchlist.csv; ZIP files and list URLs are not supported.");
 }
