@@ -7,7 +7,7 @@ export function parseWatchlistUrl(input) {
   }
 
   if (/^ls\d{7,10}$/i.test(trimmed)) {
-    return { kind: "list", id: trimmed, url: `https://www.imdb.com/list/${trimmed}/` };
+    return { provider: "imdb", kind: "list", id: trimmed, url: `https://www.imdb.com/list/${trimmed}/` };
   }
 
   try {

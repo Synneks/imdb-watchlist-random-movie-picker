@@ -14,7 +14,7 @@ const els = {
   plot: document.getElementById("plot"),
   credits: document.getElementById("credits"),
   poster: document.getElementById("poster"),
-  openTitle: document.getElementById("open-imdb"),
+  openTitle: document.getElementById("open-title"),
   error: document.getElementById("error"),
   primaryAction: document.getElementById("primary-action"),
   pickAgain: document.getElementById("pick-again"),
