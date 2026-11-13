@@ -14,7 +14,7 @@ const els = {
   plot: document.getElementById("plot"),
   credits: document.getElementById("credits"),
   poster: document.getElementById("poster"),
-  openImdb: document.getElementById("open-imdb"),
+  openTitle: document.getElementById("open-imdb"),
   error: document.getElementById("error"),
   primaryAction: document.getElementById("primary-action"),
   pickAgain: document.getElementById("pick-again"),
@@ -168,7 +168,8 @@ function showMovie(movie) {
     els.poster.removeAttribute("src");
   }
 
-  els.openImdb.href = movie.url ?? "#";
+  els.openTitle.href = movie.url ?? "#";
+  els.openTitle.textContent = movie.provider === "letterboxd" ? "Open on Letterboxd" : "Open on IMDb";
   uiMode = "result";
   renderMode();
 }
@@ -216,8 +217,8 @@ function applyImportState(importState, count = cachedCount) {
     els.status.textContent = importState?.status === "done" && importState.message
       ? importState.message
       : lastSaved.watchlistSource
-      ? "Paste an IMDb watchlist or custom-list URL, then import"
-      : "Paste an IMDb watchlist/custom-list URL or ID above";
+      ? "Paste an IMDb or Letterboxd list URL, then import"
+      : "Paste an IMDb watchlist/custom-list or Letterboxd list URL above";
   }
   renderMode();
 }
@@ -245,7 +246,7 @@ async function saveSettingsIfNeeded() {
   const moviesOnly = els.moviesOnly.checked;
 
   if (watchlistSource && !parseWatchlistUrl(watchlistSource)) {
-    throw new Error("That does not look like a valid IMDb watchlist/custom-list URL or user/list ID.");
+    throw new Error("That does not look like a valid IMDb watchlist/custom-list or public Letterboxd list URL.");
   }
 
   const changed =
@@ -270,13 +271,13 @@ async function importWatchlist() {
     await saveSettingsIfNeeded();
   } catch (error) {
     showError(error.message ?? String(error));
-    els.status.textContent = "Fix IMDb list URL";
+    els.status.textContent = "Fix list URL";
     return;
   }
 
   if (!els.watchlistSource.value.trim()) {
     showError("Paste an IMDb watchlist or custom-list URL or ID above first.");
-    els.status.textContent = "IMDb list not configured";
+    els.status.textContent = "List not configured";
     return;
   }
 
@@ -285,7 +286,7 @@ async function importWatchlist() {
   els.status.textContent = "Starting import…";
   renderMode();
 
-  // Open a sticky panel window before IMDb steals focus (closes the toolbar popup).
+  // Open a sticky panel window while the source list loads (closes the toolbar popup).
   const openPanel = !isPanelWindow;
   const response = await sendMessage({ type: "importWatchlist", openPanel });
 
@@ -312,7 +313,7 @@ async function pickRandom() {
     await saveSettingsIfNeeded();
   } catch (error) {
     showError(error.message ?? String(error));
-    els.status.textContent = "Fix IMDb list URL";
+    els.status.textContent = "Fix list URL";
     return;
   }
 
@@ -341,7 +342,7 @@ async function refreshWatchlist() {
     await saveSettingsIfNeeded();
   } catch (error) {
     showError(error.message ?? String(error));
-    els.status.textContent = "Fix IMDb list URL";
+    els.status.textContent = "Fix list URL";
     return;
   }
 
@@ -400,7 +401,7 @@ els.watchlistSource.addEventListener("change", async () => {
     }
     els.status.textContent = els.watchlistSource.value.trim()
       ? "List saved — click Import list"
-      : "Paste an IMDb watchlist/custom-list URL or ID above";
+      : "Paste an IMDb watchlist/custom-list or Letterboxd list URL above";
     showError("");
     renderMode();
   } catch (error) {

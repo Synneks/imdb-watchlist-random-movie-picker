@@ -57,3 +57,12 @@ From the repository root, run `node --test tests/imdb-custom-lists.test.mjs`
 after `npm ci` in `browser-app/`. It uses synthetic CSV/structured-page fixtures
 and mocked Chrome storage/messages, not a live browser session. See
 [IMDb custom-list verification notes](../docs/imdb-custom-lists.md) for manual gaps.
+
+
+## Letterboxd list URLs
+
+Paste a public list URL such as `https://letterboxd.com/jmis/list/official-top-250-narrative-feature-films/` and choose **Import list**. The extension opens it in a background tab, reads every numbered page, then closes the tab and saves the URL in synced extension settings and titles in local extension storage. Private lists can be read when you are logged in to Letterboxd in Chrome. If a list page is blocked, unavailable, or pagination cannot be verified, the import fails without saving partial results.
+
+Picked Letterboxd titles open on Letterboxd. Their personal ratings are not imported or shown as IMDb aggregate ratings. The movie filter applies to Letterboxd list entries as movies. IMDb watchlist and custom-list URL import continues to use the existing complete-pagination checks and cache safeguards.
+
+To try it, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select this `chrome-extension` directory. Click the extension icon, paste a public Letterboxd list URL into the source field, click **Import list**, then **Pick random**. The imported URL stays in extension settings; titles are cached on this device. Use **Refresh list** to fetch an updated list. This extension build has no store package; load the unpacked folder again after changing files.

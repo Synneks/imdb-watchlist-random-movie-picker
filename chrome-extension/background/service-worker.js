@@ -103,7 +103,7 @@ function cacheIsUsable(cachedWatchlist, cachedAt, cacheVersion, settings) {
 async function loadWatchlist(forceRefresh = false) {
   const settings = await getSettings();
   if (!settings.watchlistSource?.trim()) {
-    throw new Error("Paste your IMDb watchlist or custom-list URL in the extension popup first.");
+    throw new Error("Paste an IMDb watchlist/custom-list or Letterboxd list URL in the extension popup first.");
   }
 
   if (!forceRefresh) {
@@ -128,15 +128,15 @@ async function runImport({ openPanel = false } = {}) {
   importInFlight = (async () => {
     const settings = await getSettings();
     if (!settings.watchlistSource?.trim()) {
-      throw new Error("Paste your IMDb watchlist or custom-list URL first.");
+      throw new Error("Paste an IMDb or Letterboxd list URL first.");
     }
     if (!parseWatchlistUrl(settings.watchlistSource)) {
-      throw new Error("That does not look like a valid IMDb watchlist or custom-list URL or ID.");
+      throw new Error("That does not look like a valid IMDb watchlist/custom-list or public Letterboxd list URL.");
     }
 
     await setImportState({
       status: "running",
-      message: "Opening your IMDb list…",
+      message: "Opening your list…",
       error: "",
       count: 0,
     });
@@ -148,7 +148,7 @@ async function runImport({ openPanel = false } = {}) {
     try {
       await setImportState({
         status: "running",
-        message: "Importing titles from IMDb…",
+        message: "Importing titles from the list…",
       });
 
       const watchlist = await fetchWatchlist(settings.watchlistSource, {
