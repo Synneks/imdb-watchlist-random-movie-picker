@@ -1,4 +1,4 @@
-# IMDb Watchlist Random Movie Picker
+# Watchlist Random Picker
 
 Pick a random movie or show from your IMDb watchlist.
 

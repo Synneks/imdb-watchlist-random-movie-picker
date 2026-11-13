@@ -1,4 +1,4 @@
-# IMDb Watchlist Random Picker — Browser app
+# Watchlist Random Picker — Browser app
 
 Pick a random title from an IMDb watchlist CSV. No login, no server — the file stays in your browser (`localStorage`).
 
