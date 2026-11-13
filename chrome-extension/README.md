@@ -1,4 +1,4 @@
-# IMDb Watchlist Random Picker
+# Watchlist Random Picker — Chrome extension
 
 A Chrome extension that picks a random movie or show from your IMDb watchlist.
 
