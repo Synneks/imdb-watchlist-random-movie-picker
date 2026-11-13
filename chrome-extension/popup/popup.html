@@ -13,11 +13,11 @@
     </header>
 
     <section class="panel settings">
-      <label for="watchlist-source">Watchlist URL</label>
+      <label for="watchlist-source">IMDb watchlist or custom-list URL / ID</label>
       <input
         id="watchlist-source"
         type="text"
-        placeholder="https://www.imdb.com/user/…/watchlist"
+        placeholder="https://www.imdb.com/list/ls123456789/"
         autocomplete="off"
         spellcheck="false"
       />
@@ -47,12 +47,12 @@
 
       <div id="import-progress" class="import-progress hidden">
         <div class="spinner" aria-hidden="true"></div>
-        <p id="import-message">Importing watchlist…</p>
+        <p id="import-message">Importing list…</p>
       </div>
 
       <div id="idle" class="idle">
-        <button id="primary-action" type="button" class="btn primary large">Import watchlist</button>
-        <button id="refresh-list" type="button" class="btn link hidden">Refresh watchlist</button>
+        <button id="primary-action" type="button" class="btn primary large">Import list</button>
+        <button id="refresh-list" type="button" class="btn link hidden">Refresh list</button>
       </div>
     </main>
 

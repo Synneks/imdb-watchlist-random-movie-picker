@@ -1,5 +1,5 @@
 function parseNextData(html) {
-  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  const match = html.match(/<script\b(?=[^>]*\bid=["']__NEXT_DATA__["'])[^>]*>([\s\S]*?)<\/script>/i);
   if (!match) return null;
   try {
     return JSON.parse(match[1]);
@@ -91,21 +91,23 @@ function collectTitleSearch(data) {
     if (Array.isArray(search.edges)) {
       return {
         search,
-        total: pageProps.totalItems ?? search.total ?? search.edges.length,
+        total: pageProps.totalItems ?? search.total ?? null,
+        structured: true,
       };
     }
   }
 
   return {
     search: null,
-    total: pageProps.totalItems ?? 0,
+    total: null,
+    structured: false,
   };
 }
 
 function extractItemsFromPage(data) {
-  const { search, total } = collectTitleSearch(data);
+  const { search, total, structured } = collectTitleSearch(data);
   if (!search?.edges?.length) {
-    return { items: [], total: total || 0 };
+    return { items: [], total, structured };
   }
 
   const items = search.edges
@@ -119,57 +121,7 @@ function extractItemsFromPage(data) {
     )
     .filter(Boolean);
 
-  return { items, total: total || items.length };
-}
-
-function extractItemsFromDom() {
-  const cards = document.querySelectorAll(
-    '[data-testid="list-page-mc-list-content"] li, .ipc-metadata-list-summary-item, .lister-item'
-  );
-  const seen = new Set();
-  const items = [];
-
-  const roots = cards.length
-    ? cards
-    : [document];
-
-  for (const root of roots) {
-    const links = root.querySelectorAll('a[href*="/title/tt"]');
-    for (const link of links) {
-      const match = link.getAttribute("href")?.match(/\/title\/(tt\d+)\//);
-      if (!match || seen.has(match[1])) continue;
-      seen.add(match[1]);
-
-      const title =
-        link.getAttribute("aria-label") ||
-        link.textContent?.trim() ||
-        "Unknown title";
-      if (!title || title === "Unknown title") continue;
-
-      const yearMatch = title.match(/\((\d{4})\)\s*$/);
-      const cleanTitle = yearMatch ? title.replace(/\s*\(\d{4}\)\s*$/, "").trim() : title;
-
-      items.push({
-        id: match[1],
-        title: cleanTitle,
-        year: yearMatch ? Number(yearMatch[1]) : null,
-        rating: null,
-        voteCount: null,
-        type: null,
-        poster: null,
-        plot: null,
-        metascore: null,
-        certificate: null,
-        runtime: null,
-        director: null,
-        stars: [],
-        url: `https://www.imdb.com/title/${match[1]}/`,
-        displayTitle: yearMatch ? `${cleanTitle} (${yearMatch[1]})` : cleanTitle,
-      });
-    }
-  }
-
-  return { items, total: items.length };
+  return { items, total, structured };
 }
 
 function readItemsFromDocument() {
@@ -177,12 +129,12 @@ function readItemsFromDocument() {
   if (script?.textContent) {
     try {
       const parsed = extractItemsFromPage(JSON.parse(script.textContent));
-      if (parsed.items.length) return parsed;
+      if (parsed.structured) return parsed;
     } catch {
-      // fall through to DOM
+      // Unsupported data must not become a successful partial DOM import.
     }
   }
-  return extractItemsFromDom();
+  return { items: [], total: null, structured: false };
 }
 
 async function fetchPageItems(url) {
@@ -211,64 +163,48 @@ async function scrapeWatchlistInPage(params) {
   } else {
     search.set("sort", "list_order,asc");
   }
-  if (moviesOnly) {
-    search.set("title_type", "movie,tvMovie");
-  }
+  // Read the full source, then filter locally: IMDb totals may describe the
+  // unfiltered list even when a title_type query parameter is present.
+  let total = null;
+  const unique = [];
+  const seen = new Set();
 
-  let page = 1;
-  let total = Infinity;
-  const allItems = [];
-  let sawStructuredData = false;
-
-  while (allItems.length < total) {
+  for (let page = 1; page <= 100; page += 1) {
     search.set("page", String(page));
     const pageUrl = `${baseUrl}?${search.toString()}`;
-
     let batch;
-    if (page === 1) {
-      batch = readItemsFromDocument();
-      if (!batch.items.length) {
-        batch = await fetchPageItems(pageUrl);
-      }
-      sawStructuredData = batch.items.length > 0;
-    } else {
-      batch = await fetchPageItems(pageUrl);
+    try {
+      batch = page === 1 ? readItemsFromDocument() : await fetchPageItems(pageUrl);
+    } catch (error) {
+      throw new Error(`Import incomplete (${unique.length} unique titles read): ${error.message} Open the list in IMDb, check access, and retry Import or Refresh.`);
     }
 
-    if (page === 1) {
-      total = batch.total || batch.items.length;
-      if (!batch.items.length) {
-        if (total > 0) {
-          throw new Error(
-            `IMDb reports ${total} titles, but none could be read. Try opening your watchlist tab and clicking Refresh again.`
-          );
-        }
-        return { items: [], fetchedAt: Date.now() };
-      }
+    if (!batch.structured || !Number.isSafeInteger(batch.total) || batch.total < 0) {
+      throw new Error("Could not verify the complete IMDb list. It may be private, unavailable, or using an unsupported page format. Open the list while logged in, then retry Import or Refresh. No partial list was saved.");
+    }
+    if (total === null) total = batch.total;
+    if (batch.total !== total) {
+      throw new Error("The IMDb list changed during import. Retry Import or Refresh; no partial list was saved.");
     }
 
-    if (!batch.items.length) break;
-    allItems.push(...batch.items);
-
-    if (allItems.length >= total) break;
-    page += 1;
-    if (page > 100) break;
+    let added = 0;
+    for (const item of batch.items) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      unique.push(item);
+      added += 1;
+    }
+    if (unique.length === total) break;
+    if (unique.length > total || added === 0 || page === 100) {
+      throw new Error(`Import incomplete: read ${unique.length} unique titles of ${total}. IMDb returned a repeated, empty, or unreadable page, or the 100-page limit was reached. Retry Import or Refresh; no partial list was saved.`);
+    }
   }
-
-  if (!sawStructuredData && !allItems.length) {
-    throw new Error("Could not read titles from the IMDb watchlist page.");
-  }
-
-  const seen = new Set();
-  const unique = allItems.filter((item) => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
 
   return {
     items: filterMoviesOnly(unique, moviesOnly),
     fetchedAt: Date.now(),
+    complete: true,
+    sourceCount: total,
   };
 }
 
@@ -277,5 +213,9 @@ async function scrapeWatchlistInPage(params) {
   if (!raw) {
     throw new Error("Missing scrape parameters.");
   }
-  return scrapeWatchlistInPage(JSON.parse(raw));
+  try {
+    return await scrapeWatchlistInPage(JSON.parse(raw));
+  } catch (error) {
+    return { error: error.message ?? String(error) };
+  }
 })();
