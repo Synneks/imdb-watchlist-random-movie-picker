@@ -149,3 +149,18 @@ One-off source checks also passed for CSV BOM/quoted fields/embedded newlines, I
 `npm audit --json` reported two high-severity dependency entries (`vite` and transitive `source-map-js`), with fixes available. This records the installed baseline, not a runtime exploit assessment; rerun the audit when doing dependency maintenance. No dependency changes were made during exploration.
 
 There are no committed CSV fixtures, scraper HTML fixtures, browser tests, or extension integration tests. Build/lint/syntax checks do not validate live IMDb behavior. Manual feature checks should cover importing and replacing a list, reload/restore, filtering to zero titles, repeated picks, clear, missing metadata, and enrichment failure. Extension checks additionally need load-unpacked Chrome, public/private sources, multiple pages, refresh/cache expiry, panel persistence when the toolbar closes, and failure recovery. Live scraping and JSONP were not exercised during this exploration.
+
+## Custom-list browser additions (#3)
+
+On top of #1's Letterboxd foundation, `csv.ts` now exports `ParsedList` and
+`parseLetterboxdCustomListCsv`; `parseWatchlistCsv` dispatches v7 preambles and
+Position/Name/URL film tables through the same normalizer as watchlists. Metadata
+never enters the picking pool; retained rows preserve first-seen order. The optional
+`sourceName` is stored alongside the existing provider/items/filename fields and
+restored by Picker. Legacy lists without it use the filename. No extension changes
+are involved. See [Letterboxd notes](letterboxd-support.md#implemented-custom-list-csv-path-3)
+and [fixture provenance](../browser-app/tests/fixtures/CUSTOM-LISTS.md).
+
+Focused browser parser/storage regression checks now live in `browser-app/tests/`:
+`node --experimental-strip-types --test browser-app/tests/*.test.ts`. These do not
+replace manual browser and fresh account-export verification.

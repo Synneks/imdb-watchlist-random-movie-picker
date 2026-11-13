@@ -1,0 +1,10 @@
+﻿Letterboxd list export v7,,,,
+Date,Name,Tags,URL,Description
+2023-04-17,"Weekend, cinéma","weekend, favourites",https://letterboxd.com/example/list/weekend/,"A list description
+with a second line"
+,,,,
+Position,Name,Year,URL,Description
+1,Amélie,2001,https://boxd.it/2aUc,
+2,"The Good, the Bad and the Ugly",1966,https://letterboxd.com/film/the-good-the-bad-and-the-ugly/,"A note, not a plot"
+3,Unknown year,,https://letterboxd.com/film/unknown-year/,
+4,Duplicate Amélie,2001,http://boxd.it/2aUc?ref=export,

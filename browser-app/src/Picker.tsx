@@ -50,6 +50,7 @@ export default function Picker() {
   const [provider, setProvider] = useState<Provider>(initial.provider);
   const [items, setItems] = useState<Title[]>(initial.stored?.items ?? []);
   const [fileName, setFileName] = useState(initial.stored?.fileName ?? "");
+  const [sourceName, setSourceName] = useState(initial.stored?.sourceName ?? "");
   const [mode, setMode] = useState<Mode>(initial.stored?.items.length ? "ready" : "empty");
   const [picked, setPicked] = useState<Title | null>(null);
   const [error, setError] = useState("");
@@ -67,6 +68,7 @@ export default function Picker() {
     setItems(stored?.items ?? []);
     setMoviesOnly(stored?.moviesOnly ?? false);
     setFileName(stored?.fileName ?? "");
+    setSourceName(stored?.sourceName ?? "");
     setPicked(null);
     setError("");
     setMode(stored?.items.length ? "ready" : "empty");
@@ -107,6 +109,7 @@ export default function Picker() {
           moviesOnly,
           importedAt: Date.now(),
           fileName,
+          sourceName,
         });
         return next;
       });
@@ -115,20 +118,21 @@ export default function Picker() {
     return () => {
       cancelled = true;
     };
-  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName, provider, picked?.provider, picked?.imdbId]);
+  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName, sourceName, provider, picked?.provider, picked?.imdbId]);
 
   const pool = useMemo(() => {
     if (!moviesOnly) return items;
     return items.filter((item) => isMovieType(item.type));
   }, [items, moviesOnly]);
 
-  function persist(nextItems: Title[], nextMoviesOnly: boolean, nextFileName: string, nextProvider = provider) {
+  function persist(nextItems: Title[], nextMoviesOnly: boolean, nextFileName: string, nextProvider = provider, nextSourceName = sourceName) {
     saveWatchlist({
       provider: nextProvider,
       items: nextItems,
       moviesOnly: nextMoviesOnly,
       importedAt: Date.now(),
       fileName: nextFileName,
+      sourceName: nextSourceName || undefined,
     });
   }
 
@@ -149,9 +153,10 @@ export default function Picker() {
           throw new Error(`This is a ${source} CSV. Select ${source} before importing it.`);
         }
         const parsed = imported.items;
-        persist(parsed, moviesOnly, file.name, imported.provider);
+        persist(parsed, moviesOnly, file.name, imported.provider, imported.sourceName ?? "");
         setItems(parsed);
         setFileName(file.name);
+        setSourceName(imported.sourceName ?? "");
         setPicked(null);
         setMode("ready");
 
@@ -206,6 +211,7 @@ export default function Picker() {
     setItems([]);
     setPicked(null);
     setFileName("");
+    setSourceName("");
     setMode("empty");
     setMoviesOnly(false);
     setStatus(`Upload your ${providerName} CSV to get started`);
@@ -295,7 +301,7 @@ export default function Picker() {
 
       {hasList ? (
         <p className="hint">
-          {providerName} list saved locally{fileName ? ` from ${fileName}` : ""}.{" "}
+          {providerName} list saved locally{sourceName || fileName ? ` from ${sourceName || fileName}` : ""}.{" "}
           <button type="button" className="text-button" onClick={handleClear}>
             Clear list
           </button>
