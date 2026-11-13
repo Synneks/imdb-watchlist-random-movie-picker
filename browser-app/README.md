@@ -1,6 +1,6 @@
 # Watchlist Random Picker — Browser app
 
-Pick a random title from an IMDb watchlist CSV. No login, no server — the file stays in your browser (`localStorage`).
+Pick a random title from an IMDb or Letterboxd watchlist or custom-list CSV. No login, no server — the file stays in your browser (`localStorage`).
 
 Live (after GitHub Pages is enabled): https://synneks.github.io/imdb-watchlist-random-movie-picker/
 
@@ -29,7 +29,7 @@ To ask Google to index the URL: [Search Console](https://search.google.com/searc
 ## Letterboxd custom lists
 
 Use Letterboxd's account export in **Settings** in a desktop browser, extract the
-ZIP, then import the desired CSV from its `lists` folder using **Import CSV**.
+ZIP, then import the desired CSV from its `lists` folder with Letterboxd selected using **Import Letterboxd CSV**.
 Upload one extracted list at a time. The importer accepts the observed v7
 metadata preamble and `Position,Name,Year,URL,Description` film table, or that film
 table alone. Name and URL are required; year and notes are optional. List notes
@@ -54,3 +54,26 @@ with TypeScript stripping, or the local Node 26 environment):
 ```sh
 node --experimental-strip-types --test browser-app/tests/*.test.ts
 ```
+
+## Provider selection and themes
+
+Use the IMDb / Letterboxd radio controls above the picker (Tab and arrow keys work).
+IMDb keeps its yellow theme; Letterboxd uses slate, green, and blue throughout the
+page. Import instructions and title links match the provider. Select the matching
+provider before importing; a CSV from the other provider shows an error and keeps
+the current list.
+
+Selection is remembered separately from saved lists. Each provider retains one
+list, its source label/filename, and its movie filter, including an empty-list
+filter preference. Switching clears the displayed pick/error and restores the
+selected provider's ready or empty state; it never merges lists. Clear affects only
+the selected provider. Existing IMDb local storage is read compatibly and preserved
+when the first Letterboxd list is imported. Repository/package/Pages paths stay as
+before. The extension has neutral display branding and continues to support IMDb.
+
+Validation for #4: build and lint, Node importer/storage/preference tests, and a
+headless Chromium workflow at desktop and 320px widths. Both themes were exercised
+in empty, ready, result, and error states with keyboard switching/focus, reload,
+independent filters, import replacement/failure, and clear isolation. External
+requests were blocked during these UI checks; live IMDb enrichment, fresh signed-in
+Letterboxd exports, and unpacked-extension visuals remain manual verification gaps.

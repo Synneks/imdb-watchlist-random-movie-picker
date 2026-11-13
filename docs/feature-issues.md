@@ -18,4 +18,4 @@ The working display name in #4 is **Watchlist Random Picker**. The requested web
 
 CSV import is the initial delivery for #1/#3, and file-based handoff is the initial delivery for #5. Pasted Letterboxd list URLs, ZIP upload, direct authenticated transfer, and ongoing synchronization are future expansions. They are not prerequisites for the scoped issues.
 
-These are open work items, not implemented capabilities. The reference notes include broader possibilities and historical questions; follow the current issue's selected delivery scope when starting implementation.
+This branch implements the browser CSV foundation (#1), custom-list CSV support (#3), and neutral branding/provider themes (#4); issue status on GitHub is unchanged. Other rows remain scoped work items. The reference notes include broader possibilities and historical questions; follow the current issue's selected delivery scope when starting implementation.

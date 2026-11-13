@@ -1,12 +1,12 @@
 # Letterboxd list support: implementation notes
 
-Status: planned, with no Letterboxd code implemented. These notes accompany the [codebase guide](codebase-guide.md), based on exploration dated 2026-11-08. Recommendations below are starting points, not an approved feature specification.
+Status: browser CSV watchlist/custom-list import and provider selection/themes are implemented (#1/#3/#4). The extension remains IMDb-only. These notes accompany the [codebase guide](codebase-guide.md), based on exploration dated 2026-11-08. Recommendations below are starting points, not an approved feature specification.
 
 The [feature issue index](feature-issues.md) links the implementation scopes: #1 selects browser CSV watchlist import, #3 adds custom-list CSVs, and #4 owns the provider/theme toggle. The broader access options below are future extensions rather than blockers for those deliveries.
 
 For the separately requested feature of moving IMDb lists into Letterboxd, read [IMDb-to-Letterboxd transfer notes](imdb-to-letterboxd-transfer.md).
 
-## Intended capability and scope questions
+## Historical exploration and future scope questions
 
 The requested future capability is selecting a random movie from a Letterboxd list. The random selection itself already works on an array of normalized titles in both clients. The work is acquiring the list, preserving its identity, and rendering its titles without IMDb assumptions.
 
@@ -29,7 +29,7 @@ If pasted list URLs are required, investigate the extension path separately: it 
 
 For a web-app URL importer, establish a supported data-access route first. Static GitHub Pages provides no server-side fetch/proxy. A browser fetch from Pages to Letterboxd depends on the target's CORS policy; adding a client-side `fetch` alone does not establish that access. An approved API or backend would be a separate architectural change. Keep any required client secret out of shipped browser/extension assets.
 
-## Current assumptions to remove
+## Baseline assumptions (before #1/#3/#4)
 
 ### CSV parsing and format detection
 
@@ -99,3 +99,15 @@ Picking and IMDb-enrichment guards are reused from #1. Short boxd.it identities 
 long film slugs are each normalized offline; alias equivalence requires a redirect
 lookup and is not inferred from a title/year pair. ZIP upload, list-URL fetching,
 provider-toggle UX (#4), and the extension remain outside #3.
+
+## Implemented provider selection (#4)
+
+The neutral Watchlist Random Picker UI offers IMDb/Letterboxd radios and themes the
+whole page via a root attribute. Import requires the selected provider to match the
+detected CSV. Selected provider uses `watchlist-picker-provider-v1`; saved data uses
+isolated `imdb-watchlist-picker-v1:imdb` and `:letterboxd` slots. The old active key
+remains a compatible fallback, with legacy IMDb data preserved on first Letterboxd
+save. Switching restores list, source label and movie filter without combining data.
+Only IMDb picks request IMDb enrichment. Static instructions/FAQ change with provider.
+The historical baseline assumptions above are retained for context; current contracts
+are recorded in the codebase guide. ZIP/pasted URL/extension import remain future work.
