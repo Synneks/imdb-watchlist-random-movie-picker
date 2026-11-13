@@ -18,4 +18,4 @@ The working display name in #4 is **Watchlist Random Picker**. The requested web
 
 CSV import is the initial delivery for #1/#3, and file-based handoff is the initial delivery for #5. Pasted Letterboxd list URLs, ZIP upload, direct authenticated transfer, and ongoing synchronization are future expansions. They are not prerequisites for the scoped issues.
 
-These remain GitHub work items; implementation status and verification gaps are recorded in their linked notes. The reference notes include broader possibilities and historical questions; follow the current issue's selected delivery scope when starting implementation.
+This branch implements browser CSV foundations and themes (#1/#3/#4) and includes local `main` updates for IMDb custom lists (#2) and extension Letterboxd URL imports. GitHub issue status is unchanged; linked notes record verification gaps. The reference notes include broader possibilities and historical questions; follow the current issue's selected delivery scope when starting implementation.

@@ -41,7 +41,7 @@ export function loadWatchlist(provider?: Provider): StoredWatchlist | null {
 }
 
 export function saveWatchlist(data: StoredWatchlist): void {
-  // Preserve a legacy-only list before the active key switches providers.
+  // Preserve a pre-provider IMDb list before another import replaces the legacy active key.
   const previous = loadWatchlist();
   if (previous && previous.provider !== data.provider && !localStorage.getItem(providerKey(previous.provider))) {
     localStorage.setItem(providerKey(previous.provider), JSON.stringify(previous));

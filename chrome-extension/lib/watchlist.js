@@ -7,7 +7,8 @@ export function parseWatchlistUrl(input) {
   }
 
   if (/^ls\d{7,10}$/i.test(trimmed)) {
-    return { provider: "imdb", kind: "list", id: trimmed, url: `https://www.imdb.com/list/${trimmed}/` };
+    const id = trimmed.toLowerCase();
+    return { provider: "imdb", kind: "list", id, url: `https://www.imdb.com/list/${id}/` };
   }
 
   try {
@@ -23,7 +24,8 @@ export function parseWatchlistUrl(input) {
 
     const listMatch = url.pathname.match(/^\/list\/(ls\d{7,10})\/?$/i);
     if (listMatch) {
-      return { provider: "imdb", kind: "list", id: listMatch[1], url: `https://www.imdb.com/list/${listMatch[1]}/` };
+      const id = listMatch[1].toLowerCase();
+      return { provider: "imdb", kind: "list", id, url: `https://www.imdb.com/list/${id}/` };
     }
 
     const userMatch = url.pathname.match(/^\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))\/watchlist\/?$/i);

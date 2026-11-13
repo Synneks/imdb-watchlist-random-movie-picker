@@ -1,6 +1,6 @@
-# IMDb Watchlist Random Movie Picker
+# Random Movie Picker
 
-Pick a random movie or show from your IMDb watchlist.
+Pick a random movie or show from an IMDb or Letterboxd list. The browser app imports CSVs and remembers separate lists and filters for each provider; the Chrome extension reads IMDb lists. This is an unofficial helper.
 
 ## Development reference
 

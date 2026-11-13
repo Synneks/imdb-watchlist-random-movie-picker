@@ -3,23 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IMDb Watchlist Random Movie Picker — What to watch?</title>
+    <title>Random Movie Picker</title>
     <meta
       name="description"
-      content="Can't decide what to watch? Import your IMDb watchlist CSV and pick a random movie or TV show. Free, no login, runs in your browser."
+      content="Can't decide what to watch? Import an IMDb or Letterboxd list CSV and pick a random movie or TV show. Free, no login, runs in your browser."
     />
     <meta
       name="keywords"
-      content="IMDb watchlist random picker, random movie from watchlist, IMDb CSV export, what to watch tonight, random film picker"
+      content="watchlist random picker, Letterboxd CSV, random movie from watchlist, IMDb CSV export, what to watch tonight, random film picker"
     />
     <link rel="canonical" href="https://synneks.github.io/imdb-watchlist-random-movie-picker/" />
     <meta name="robots" content="index, follow" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="What to watch? IMDb Watchlist Random Picker" />
+    <meta property="og:title" content="Random Movie Picker" />
     <meta
       property="og:description"
-      content="Import your IMDb watchlist CSV and pick a random title. Free, no account, private in your browser."
+      content="Import an IMDb or Letterboxd list CSV and pick a random title. Free, no account, private in your browser."
     />
     <meta
       property="og:url"
@@ -30,10 +30,10 @@
       content="https://synneks.github.io/imdb-watchlist-random-movie-picker/icon128.png"
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="What to watch? IMDb Watchlist Random Picker" />
+    <meta name="twitter:title" content="Random Movie Picker" />
     <meta
       name="twitter:description"
-      content="Import your IMDb watchlist CSV and pick a random movie or show."
+      content="Import an IMDb or Letterboxd list CSV and pick a random movie or show."
     />
 
     <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
@@ -50,15 +50,15 @@
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "IMDb Watchlist Random Movie Picker",
+        "name": "Random Movie Picker",
         "alternateName": "What to watch?",
         "url": "https://synneks.github.io/imdb-watchlist-random-movie-picker/",
-        "description": "Pick a random movie or TV show from your IMDb watchlist by uploading the official IMDb CSV export. No login required.",
+        "description": "Pick a random movie or TV show from an IMDb or Letterboxd list by uploading an exported CSV. No login required.",
         "applicationCategory": "EntertainmentApplication",
         "operatingSystem": "Any",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "featureList": [
-          "Import IMDb watchlist CSV",
+          "Import IMDb and Letterboxd list CSVs",
           "Pick a random title",
           "Optional movies-only filter",
           "Saves the list in your browser"
@@ -70,24 +70,19 @@
     <a class="skip-link" href="#picker">Skip to picker</a>
 
     <header class="hero">
-      <p class="brand">What to watch?</p>
+      <h1 class="brand" aria-label="Random Movie Picker"><span>Random</span> <span>Movie</span> <span>Picker</span></h1>
       <p class="lede">
-        Import your IMDb watchlist and let chance pick the next movie or show.
+        Let chance choose from your IMDb or Letterboxd list.<br />
+        An unofficial helper for your next movie night.
       </p>
     </header>
 
     <div id="picker"></div>
 
-    <section id="letterboxd-custom-lists" class="how-to">
-      <h2>Import a Letterboxd custom list</h2>
-      <p>In Letterboxd Settings on desktop, export your account data and extract the ZIP.
-        Choose the CSV for your custom list from the lists folder, then click <strong>Import CSV</strong>.
-        Upload the extracted CSV, including its list metadata and film table. The list name is saved
-        when present; otherwise the filename is shown. ZIP upload and pasted list URLs are not supported.</p>
-    </section>
-
-    <section id="how-to" class="how-to">
-      <h2>How to export your IMDb watchlist CSV</h2>
+    <div class="help-stack">
+    <details id="how-to" class="how-to info-card">
+      <summary>How to import a list</summary>
+      <div data-provider-content="imdb">
       <p>
         IMDb does not let websites read your watchlist directly. Export a CSV from the desktop
         site, then upload it here. Takes about a minute.
@@ -98,7 +93,7 @@
           <a href="https://www.imdb.com/list/watchlist" rel="noopener noreferrer" target="_blank"
             >your IMDb watchlist</a
           >
-          on a computer (export is not available in the IMDb app).
+          or a custom list on a computer (export is not available in the IMDb app).
         </li>
         <li>Log in if you are not already signed in.</li>
         <li>
@@ -109,37 +104,71 @@
           Save the downloaded <code>.csv</code> file (often named something like
           <code>WATCHLIST.csv</code>).
         </li>
-        <li>Come back here and click <strong>Import watchlist</strong> to upload that file.</li>
+        <li>Come back here and click <strong>Import IMDb CSV</strong> to upload that file.</li>
       </ol>
       <p>
         Your file stays on this device in local storage. Nothing is uploaded to a server.
       </p>
-    </section>
+      </div>
+      <div data-provider-content="letterboxd">
+        <ol>
+          <li>Request your data export from <a href="https://letterboxd.com/settings/data/" target="_blank" rel="noopener noreferrer">Letterboxd account settings</a>.</li>
+          <li>Download and extract the ZIP on your device. Choose <code>watchlist.csv</code> or an individual custom-list CSV.</li>
+          <li>With Letterboxd selected above, import the extracted <code>.csv</code> file. ZIP uploads and pasted list URLs are not supported.</li>
+        </ol>
+        <p>Use an exported file with film names, years, and Letterboxd film links. Each provider keeps its own saved list and filter here; switching providers never combines them.</p>
+        <div id="letterboxd-custom-lists">
+          <h3>Custom-list exports</h3>
+          <p>In Letterboxd Settings on desktop, export your account data and extract the ZIP.
+            Choose the CSV for your custom list from the lists folder, then click <strong>Import Letterboxd CSV</strong>.
+            Upload the extracted CSV, including its list metadata and film table. The list name is saved
+            when present; otherwise the filename is shown. ZIP upload and pasted list URLs are not supported.</p>
+        </div>
 
-    <section id="faq" class="faq">
-      <h2>FAQ</h2>
-      <h3>Is this an official IMDb tool?</h3>
+      </div>
+    </details>
+
+    <details id="faq" class="faq info-card">
+      <summary>Frequently asked questions</summary>
+      <h3>Is this an official tool?</h3>
       <p>
-        No. It is a free helper that uses IMDb’s own CSV export. Titles open back on IMDb.
+        No. Random Movie Picker is an independent helper, unaffiliated with IMDb or Letterboxd. Film links open on their original provider.
       </p>
       <h3>Does it work with custom lists?</h3>
       <p>
-        Yes. Export any IMDb list the same way (⋯ → Export) and upload that CSV.
+        Yes. Import an IMDb list export or an extracted Letterboxd custom-list CSV, with the matching provider selected.
       </p>
+      <div data-provider-content="imdb">
       <h3>Why is plot / Metascore missing?</h3>
       <p>
         The official CSV includes title, year, rating, runtime, and directors. Posters and top
         billed stars are loaded when you pick a title. Plot and Metascore are not in the export —
         open the title on IMDb for the full page.
       </p>
-    </section>
+      </div>
+      <div data-provider-content="letterboxd">
+        <h3>Why are details missing?</h3>
+        <p>Letterboxd CSVs can contain only a name, year, and film link. Picks work with those fields; missing posters, ratings, and credits stay empty. Letterboxd-only picks do not request IMDb metadata.</p>
+      </div>
+    </details>
+
+    </div>
 
     <footer class="site-footer">
       <p>
-        Not affiliated with IMDb or Amazon. Watchlist data never leaves your browser.
+        Not affiliated with IMDb, Amazon, or Letterboxd. CSV files are read locally and lists are saved in this browser. IMDb picks can request posters and cast from IMDb; fonts and images may load from external hosts.
       </p>
     </footer>
 
+    <script>
+      document.querySelectorAll(".info-card").forEach((card) => {
+        card.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof Element) || target.closest("summary, a, button, input, label")) return;
+          card.open = !card.open;
+        });
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

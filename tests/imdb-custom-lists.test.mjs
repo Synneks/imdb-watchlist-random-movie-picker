@@ -47,9 +47,9 @@ test('IMDb saved custom lists restore, replace and clear; failed parse leaves st
     const storage = await tsModule('browser-app/src/storage.ts');
     const saved = { items: parseImdbWatchlistCsv(fixture('custom-list.csv')), moviesOnly: false, importedAt: 1, fileName: 'custom-list.csv' };
     storage.saveWatchlist(saved);
-    assert.deepEqual(storage.loadWatchlist(), saved);
+    assert.deepEqual(storage.loadWatchlist(), { ...saved, provider: "imdb" });
     assert.throws(() => parseImdbWatchlistCsv('not an export'));
-    assert.deepEqual(storage.loadWatchlist(), saved);
+    assert.deepEqual(storage.loadWatchlist(), { ...saved, provider: "imdb" });
     storage.saveWatchlist({ ...saved, items: [saved.items[0]], moviesOnly: true });
     assert.equal(storage.loadWatchlist().items.length, 1);
     storage.clearWatchlist();
