@@ -1,4 +1,4 @@
-# Watchlist Random Picker — Browser app
+# Random Movie Picker — Browser app
 
 Pick a random title from an IMDb or Letterboxd watchlist or custom-list CSV. No login, no server — the file stays in your browser (`localStorage`).
 

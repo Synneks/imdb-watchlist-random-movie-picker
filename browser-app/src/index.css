@@ -307,6 +307,12 @@ body > * {
   padding: 36px 20px;
 }
 
+.faq {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
 .how-to {
   animation: rise 0.9s ease 0.12s both;
 }
@@ -389,12 +395,9 @@ body > * {
 
 :root[data-provider="letterboxd"] .brand {
   color: var(--text);
-  border-bottom: 4px solid var(--accent);
-  padding-bottom: 16px;
 }
 
-:root[data-provider="letterboxd"] .picker,
-:root[data-provider="letterboxd"] .faq {
+:root[data-provider="letterboxd"] .picker {
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
