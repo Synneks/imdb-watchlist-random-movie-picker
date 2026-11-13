@@ -1,4 +1,4 @@
-# Watchlist Random Picker — Chrome extension
+# Random Movie Picker — Chrome extension
 
 Pick a random movie or show from an IMDb watchlist or custom list.
 
@@ -66,3 +66,10 @@ Paste a public list URL such as `https://letterboxd.com/jmis/list/official-top-2
 Picked Letterboxd titles open on Letterboxd. Their personal ratings are not imported or shown as IMDb aggregate ratings. The movie filter applies to Letterboxd list entries as movies. IMDb watchlist and custom-list URL import continues to use the existing complete-pagination checks and cache safeguards.
 
 To try it, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select this `chrome-extension` directory. Click the extension icon, paste a public Letterboxd list URL into the source field, click **Import list**, then **Pick random**. The imported URL stays in extension settings; titles are cached on this device. Use **Refresh list** to fetch an updated list. This extension build has no store package; load the unpacked folder again after changing files.
+
+## Layout conventions
+
+The popup uses a local spacing scale: 4, 8, 12, 16, and 24px. The body owns the
+16px outer inset and section gaps; panels do not add their own outer spacing.
+Settings and action groups own their internal gaps. Controls are at least 44px
+high, with visible keyboard focus. The same layout applies in light and dark mode.

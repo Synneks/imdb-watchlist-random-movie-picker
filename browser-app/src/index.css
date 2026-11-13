@@ -1,5 +1,13 @@
 :root {
   color-scheme: dark;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --page-gutter: var(--space-4);
   --glow: rgba(245, 197, 24, 0.16);
   --side-glow: rgba(90, 40, 20, 0.35);
   --bg-top: #100e0b;
@@ -66,9 +74,9 @@ body > * {
 }
 
 .hero {
-  max-width: 720px;
+  width: min(720px, calc(100% - 2 * var(--page-gutter)));
   margin: 0 auto;
-  padding: 48px 20px 12px;
+  padding-top: var(--space-12);
   animation: rise 0.7s ease both;
 }
 
@@ -82,7 +90,7 @@ body > * {
 }
 
 .lede {
-  margin: 14px 0 0;
+  margin: var(--space-4) auto 0;
   max-width: 28em;
   font-size: 1.05rem;
   line-height: 1.45;
@@ -91,14 +99,17 @@ body > * {
 }
 
 .picker {
-  max-width: 420px;
-  margin: 20px auto 0;
-  padding: 18px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(420px, calc(100% - 2 * var(--page-gutter)));
+  margin: var(--space-8) auto 0;
+  padding: 0;
   animation: rise 0.8s ease 0.08s both;
 }
 
 .status {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 0.88rem;
   color: var(--muted);
 }
@@ -107,7 +118,7 @@ body > * {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 0.88rem;
   cursor: pointer;
 }
@@ -127,7 +138,8 @@ body > * {
   width: 100%;
   border: none;
   border-radius: 8px;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 600;
@@ -155,7 +167,7 @@ body > * {
 }
 
 .btn.large {
-  padding: 14px;
+  padding: var(--space-3) var(--space-4);
   font-size: 1rem;
 }
 
@@ -171,8 +183,8 @@ body > * {
 
 .btn.link {
   width: 100%;
-  margin-top: 8px;
-  padding: 10px;
+  margin-top: 0;
+  padding: var(--space-3) var(--space-4);
 }
 
 .text-button {
@@ -182,20 +194,23 @@ body > * {
 }
 
 .idle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   animation: rise 0.35s ease both;
 }
 
 .result {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-4);
   animation: rise 0.28s ease both;
 }
 
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .result-top {
@@ -221,7 +236,7 @@ body > * {
 }
 
 .result-body h2 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-2);
   font-family: var(--font-display);
   font-size: 1.05rem;
   line-height: 1.25;
@@ -238,7 +253,7 @@ body > * {
 }
 
 .meta {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
   font-size: 0.8rem;
   color: var(--muted);
 }
@@ -261,7 +276,7 @@ body > * {
 }
 
 .credits {
-  margin-top: 6px;
+  margin-top: var(--space-2);
   font-size: 0.74rem;
   line-height: 1.35;
   color: var(--muted);
@@ -284,13 +299,13 @@ body > * {
 }
 
 .error {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 0.86rem;
   color: var(--danger);
 }
 
 .hint {
-  margin: 14px 0 0;
+  margin: 0;
   font-size: 0.8rem;
   color: var(--muted);
   line-height: 1.4;
@@ -300,35 +315,49 @@ body > * {
   color: var(--accent);
 }
 
-.how-to,
-.faq,
+.help-stack,
 .site-footer {
-  width: min(720px, calc(100% - 32px));
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 36px 20px;
+  width: min(720px, calc(100% - 2 * var(--page-gutter)));
+  margin-inline: auto;
 }
 
-.faq.info-card {
-  margin-top: 16px;
+.help-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
 }
 
+/* Cards own their inner spacing; their parent owns the gap between cards. */
 .info-card {
-  padding: 14px 20px;
+  margin: 0;
+  padding: var(--space-4);
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
+  cursor: pointer;
 }
 
-.how-to {
-  animation: rise 0.9s ease 0.12s both;
+.info-card p,
+.info-card ol {
+  margin-block: var(--space-3) 0;
+}
+
+.info-card h3 {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.info-card summary + div > :first-child,
+.info-card summary + h3 {
+  margin-top: 0;
 }
 
 .info-card > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   color: var(--text);
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -350,17 +379,11 @@ body > * {
 }
 
 .info-card[open] > summary {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-4);
 }
 
 .info-card[open] > summary::after {
   content: "−";
-}
-
-.how-to h2 {
-  margin: 0 0 10px;
-  font-family: var(--font-display);
-  font-size: 1.6rem;
 }
 
 .how-to p,
@@ -375,7 +398,7 @@ body > * {
 }
 
 .how-to li + li {
-  margin-top: 10px;
+  margin-top: var(--space-3);
 }
 
 .how-to a,
@@ -387,15 +410,15 @@ body > * {
   font-size: 0.86em;
 }
 
-.faq h3 {
-  margin: 22px 0 6px;
-  font-size: 1rem;
-}
-
 .site-footer {
-  padding-bottom: 48px;
+  padding-block: var(--space-8) var(--space-12);
   font-size: 0.8rem;
   color: var(--muted);
+  line-height: 1.5;
+}
+
+.site-footer p {
+  margin: 0;
 }
 
 @keyframes rise {
@@ -448,10 +471,6 @@ body > * {
   color: var(--text);
 }
 
-:root[data-provider="letterboxd"] .how-to h2 {
-  color: #75caff;
-}
-
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 4px;
@@ -464,13 +483,13 @@ input[type="checkbox"], input[type="radio"] {
 .provider-switch {
   display: flex;
   gap: 8px;
-  margin: 0 0 20px;
+  margin: 0;
   padding: 0;
   border: 0;
 }
 
 .provider-switch legend {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--muted);
   font-size: 0.88rem;
 }
@@ -482,7 +501,7 @@ input[type="checkbox"], input[type="radio"] {
   gap: 8px;
   flex: 1;
   min-height: 44px;
-  padding: 10px;
+  padding: var(--space-3);
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -504,4 +523,9 @@ input[type="checkbox"], input[type="radio"] {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
   html { scroll-behavior: auto; }
+}
+
+.checkbox input,
+.provider-option input {
+  margin: 0;
 }

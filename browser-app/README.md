@@ -78,3 +78,12 @@ in empty, ready, result, and error states with keyboard switching/focus, reload,
 independent filters, import replacement/failure, and clear isolation. External
 requests were blocked during these UI checks; live IMDb enrichment, fresh signed-in
 Letterboxd exports, and unpacked-extension visuals remain manual verification gaps.
+
+## Layout conventions
+
+The stylesheet defines a 4px spacing scale. Page content has a consistent 16px
+minimum side inset; the picker uses a vertical stack with 16px internal gaps.
+Both help cards use the same `info-card` component rules (16px padding, no outer
+margins). Their `help-stack` parent supplies the 16px gap and the separation from
+the picker. Themes change colors without changing spacing or component shapes.
+The extension follows the same spacing conventions in its independent stylesheet.

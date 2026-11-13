@@ -176,7 +176,7 @@ reload and switching. A wrong-provider CSV fails without replacing either list.
 `index.css` uses `html[data-provider]` tokens for backgrounds, surfaces, controls,
 borders, focus and supporting sections. Static `index.html` content uses
 `data-provider-content` to show the matching export help/details FAQ. Overall naming
-is Watchlist Random Picker, with unchanged repository/package/hosting paths.
+is Random Movie Picker, with unchanged repository/package/hosting paths.
 
 Run `node --experimental-strip-types --test browser-app/tests/*.test.ts` from the
 root, plus build/lint from `browser-app/`. #4 used headless Chromium with external
@@ -185,3 +185,13 @@ keyboard radio switching/focus, 320px layout, independent filters (also while em
 reload, replace, failed-import preservation, and clear isolation. Browser checks also
 cover the #3 v7 fixture and legacy-only IMDb followed by first Letterboxd import.
 These checks do not verify fresh authenticated exports, live JSONP, or extension UI.
+
+### Spacing conventions
+
+Browser `index.css` and extension `popup.css` define independent spacing tokens
+on a 4px scale. Parents own gaps between child controls/sections. Browser help
+cards are identical `info-card` elements with no outer margins inside a
+`help-stack` with a 16px gap. Their common 16px page inset and padding apply in
+both themes, expanded or collapsed. Extension body inset/section gaps are 16px;
+settings/action groups own smaller internal gaps. Both apps use 44px minimum
+primary controls and visible focus. Keep component geometry independent of theme.
