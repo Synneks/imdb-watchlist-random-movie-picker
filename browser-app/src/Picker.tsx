@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isMovieType, parseImdbWatchlistCsv } from "./csv";
+import { isMovieType, parseWatchlistCsv } from "./csv";
 import { enrichTitle } from "./enrich";
 import { clearWatchlist, loadWatchlist, saveWatchlist } from "./storage";
-import type { Title } from "./types";
+import type { Provider, Title } from "./types";
 
 type Mode = "empty" | "ready" | "result";
 
@@ -41,6 +41,7 @@ function pickRandom(items: Title[]): Title | null {
 export default function Picker() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [moviesOnly, setMoviesOnly] = useState(false);
+  const [provider, setProvider] = useState<Provider>("imdb");
   const [items, setItems] = useState<Title[]>([]);
   const [fileName, setFileName] = useState("");
   const [mode, setMode] = useState<Mode>("empty");
@@ -51,6 +52,7 @@ export default function Picker() {
   useEffect(() => {
     const stored = loadWatchlist();
     if (!stored?.items.length) return;
+    setProvider(stored.provider);
     setItems(stored.items);
     setMoviesOnly(stored.moviesOnly);
     setFileName(stored.fileName);
@@ -59,11 +61,11 @@ export default function Picker() {
   }, []);
 
   useEffect(() => {
-    if (!picked?.id) return;
+    if (!picked?.id || picked.provider !== "imdb") return;
     if (picked.poster && picked.stars.length) return;
 
     let cancelled = false;
-    enrichTitle(picked.id).then((enrichment) => {
+    enrichTitle(picked.imdbId ?? picked.id).then((enrichment) => {
       if (cancelled) return;
       if (!enrichment.poster && !enrichment.stars.length) return;
 
@@ -87,6 +89,7 @@ export default function Picker() {
             : item
         );
         saveWatchlist({
+          provider,
           items: next,
           moviesOnly,
           importedAt: Date.now(),
@@ -99,15 +102,16 @@ export default function Picker() {
     return () => {
       cancelled = true;
     };
-  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName]);
+  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName, provider, picked?.provider, picked?.imdbId]);
 
   const pool = useMemo(() => {
     if (!moviesOnly) return items;
     return items.filter((item) => isMovieType(item.type));
   }, [items, moviesOnly]);
 
-  function persist(nextItems: Title[], nextMoviesOnly: boolean, nextFileName: string) {
+  function persist(nextItems: Title[], nextMoviesOnly: boolean, nextFileName: string, nextProvider = provider) {
     saveWatchlist({
+      provider: nextProvider,
       items: nextItems,
       moviesOnly: nextMoviesOnly,
       importedAt: Date.now(),
@@ -124,12 +128,15 @@ export default function Picker() {
     reader.onload = () => {
       try {
         const text = String(reader.result ?? "");
-        const parsed = parseImdbWatchlistCsv(text);
+        const imported = parseWatchlistCsv(text);
+        const parsed = imported.items;
+        persist(parsed, moviesOnly, file.name, imported.provider);
+        setProvider(imported.provider);
         setItems(parsed);
         setFileName(file.name);
         setPicked(null);
         setMode("ready");
-        persist(parsed, moviesOnly, file.name);
+
         const filtered = moviesOnly ? parsed.filter((item) => isMovieType(item.type)) : parsed;
         setStatus(`Imported ${filtered.length} titles`);
       } catch (err) {
@@ -155,7 +162,7 @@ export default function Picker() {
       setStatus("Filter hides every title — uncheck to pick again");
       return;
     }
-    if (items.length) setStatus(`${nextPool.length} titles in watchlist`);
+    if (items.length) setStatus(`${nextPool.length} titles in list`);
   }
 
   function handlePick() {
@@ -164,14 +171,14 @@ export default function Picker() {
       setError(
         pool.length === 0 && items.length > 0
           ? "No movies match that filter. Uncheck Movies & TV movies only."
-          : "Import a watchlist CSV first."
+          : "Import an IMDb list or Letterboxd watchlist CSV first."
       );
       return;
     }
     setError("");
     setPicked(movie);
     setMode("result");
-    setStatus(`${pool.length} titles in watchlist`);
+    setStatus(`${pool.length} titles in list`);
   }
 
   function handleClear() {
@@ -180,7 +187,7 @@ export default function Picker() {
     setPicked(null);
     setFileName("");
     setMode("empty");
-    setStatus("Upload your IMDb CSV to get started");
+    setStatus("Upload an IMDb or Letterboxd CSV to get started");
     setError("");
   }
 
@@ -214,10 +221,13 @@ export default function Picker() {
               Pick again
             </button>
             <a className="btn secondary" href={picked.url} target="_blank" rel="noopener noreferrer">
-              Open on IMDb
+              Open on {picked.provider === "letterboxd" ? "Letterboxd" : "IMDb"}
             </a>
           </div>
           <MovieDetails movie={picked} />
+          <button type="button" className="btn link" onClick={() => fileInputRef.current?.click()}>
+            Replace list CSV
+          </button>
         </div>
       ) : (
         <div className="idle">
@@ -231,7 +241,7 @@ export default function Picker() {
                 className="btn link"
                 onClick={() => fileInputRef.current?.click()}
               >
-                Replace watchlist CSV
+                Replace list CSV
               </button>
             </>
           ) : (
@@ -240,7 +250,7 @@ export default function Picker() {
               className="btn primary large"
               onClick={() => fileInputRef.current?.click()}
             >
-              Import watchlist
+              Import list CSV
             </button>
           )}
         </div>
@@ -262,7 +272,7 @@ export default function Picker() {
       ) : (
         <p className="hint">
           Follow the export steps below, then import the CSV.{" "}
-          <a href="#how-to">How to export from IMDb</a>
+          <a href="#how-to">How to export your list</a>
         </p>
       )}
     </section>
