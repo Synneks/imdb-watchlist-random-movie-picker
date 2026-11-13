@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isMovieType, parseWatchlistCsv } from "./csv";
 import { enrichTitle } from "./enrich";
+import { loadSelectedProvider, selectProvider } from "./provider";
 import { clearWatchlist, loadWatchlist, saveWatchlist } from "./storage";
 import type { Provider, Title } from "./types";
 
@@ -40,25 +41,37 @@ function pickRandom(items: Title[]): Title | null {
 
 export default function Picker() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [moviesOnly, setMoviesOnly] = useState(false);
-  const [provider, setProvider] = useState<Provider>("imdb");
-  const [items, setItems] = useState<Title[]>([]);
-  const [fileName, setFileName] = useState("");
-  const [mode, setMode] = useState<Mode>("empty");
+  const importVersion = useRef(0);
+  const [initial] = useState(() => {
+    const provider = loadSelectedProvider();
+    return { provider, stored: loadWatchlist(provider) };
+  });
+  const [moviesOnly, setMoviesOnly] = useState(initial.stored?.moviesOnly ?? false);
+  const [provider, setProvider] = useState<Provider>(initial.provider);
+  const [items, setItems] = useState<Title[]>(initial.stored?.items ?? []);
+  const [fileName, setFileName] = useState(initial.stored?.fileName ?? "");
+  const [mode, setMode] = useState<Mode>(initial.stored?.items.length ? "ready" : "empty");
   const [picked, setPicked] = useState<Title | null>(null);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("Paste is not needed — upload your CSV");
+  const providerName = provider === "letterboxd" ? "Letterboxd" : "IMDb";
+  const [status, setStatus] = useState(initial.stored?.items.length
+    ? `${initial.stored.items.length} titles saved`
+    : `Upload your ${initial.provider === "letterboxd" ? "Letterboxd" : "IMDb"} CSV to get started`);
 
-  useEffect(() => {
-    const stored = loadWatchlist();
-    if (!stored?.items.length) return;
-    setProvider(stored.provider);
-    setItems(stored.items);
-    setMoviesOnly(stored.moviesOnly);
-    setFileName(stored.fileName);
-    setMode("ready");
-    setStatus(`${stored.items.length} titles saved`);
-  }, []);
+  function handleProvider(nextProvider: Provider) {
+    if (nextProvider === provider) return;
+    importVersion.current += 1;
+    const stored = loadWatchlist(nextProvider);
+    selectProvider(nextProvider);
+    setProvider(nextProvider);
+    setItems(stored?.items ?? []);
+    setMoviesOnly(stored?.moviesOnly ?? false);
+    setFileName(stored?.fileName ?? "");
+    setPicked(null);
+    setError("");
+    setMode(stored?.items.length ? "ready" : "empty");
+    setStatus(stored?.items.length ? `${stored.items.length} titles saved` : `Upload your ${nextProvider === "letterboxd" ? "Letterboxd" : "IMDb"} CSV to get started`);
+  }
 
   useEffect(() => {
     if (!picked?.id || picked.provider !== "imdb") return;
@@ -124,14 +137,19 @@ export default function Picker() {
     if (!file) return;
     setError("");
 
+    const version = ++importVersion.current;
     const reader = new FileReader();
     reader.onload = () => {
+      if (version !== importVersion.current) return;
       try {
         const text = String(reader.result ?? "");
         const imported = parseWatchlistCsv(text);
+        if (imported.provider !== provider) {
+          const source = imported.provider === "letterboxd" ? "Letterboxd" : "IMDb";
+          throw new Error(`This is a ${source} CSV. Select ${source} before importing it.`);
+        }
         const parsed = imported.items;
         persist(parsed, moviesOnly, file.name, imported.provider);
-        setProvider(imported.provider);
         setItems(parsed);
         setFileName(file.name);
         setPicked(null);
@@ -145,6 +163,7 @@ export default function Picker() {
       }
     };
     reader.onerror = () => {
+      if (version !== importVersion.current) return;
       setError("Could not read that file.");
       setStatus("Import failed");
     };
@@ -154,7 +173,7 @@ export default function Picker() {
 
   function handleMoviesOnly(checked: boolean) {
     setMoviesOnly(checked);
-    if (items.length) persist(items, checked, fileName);
+    persist(items, checked, fileName);
     const nextPool = checked ? items.filter((item) => isMovieType(item.type)) : items;
     if (!nextPool.length && items.length) {
       setPicked(null);
@@ -171,7 +190,7 @@ export default function Picker() {
       setError(
         pool.length === 0 && items.length > 0
           ? "No movies match that filter. Uncheck Movies & TV movies only."
-          : "Import an IMDb list or Letterboxd watchlist CSV first."
+          : `Import a ${providerName} list CSV first.`
       );
       return;
     }
@@ -182,12 +201,14 @@ export default function Picker() {
   }
 
   function handleClear() {
-    clearWatchlist();
+    importVersion.current += 1;
+    clearWatchlist(provider);
     setItems([]);
     setPicked(null);
     setFileName("");
     setMode("empty");
-    setStatus("Upload an IMDb or Letterboxd CSV to get started");
+    setMoviesOnly(false);
+    setStatus(`Upload your ${providerName} CSV to get started`);
     setError("");
   }
 
@@ -195,7 +216,17 @@ export default function Picker() {
 
   return (
     <section className="picker" aria-label="Watchlist picker">
-      <p className="status">{status}</p>
+      <fieldset className="provider-switch">
+        <legend>List provider</legend>
+        {(["imdb", "letterboxd"] as const).map((value) => (
+          <label className="provider-option" key={value}>
+            <input type="radio" name="provider" value={value} checked={provider === value}
+              onChange={() => handleProvider(value)} />
+            {value === "imdb" ? "IMDb" : "Letterboxd"}
+          </label>
+        ))}
+      </fieldset>
+      <p className="status" role="status">{status}</p>
 
       <label className="checkbox">
         <input
@@ -250,7 +281,7 @@ export default function Picker() {
               className="btn primary large"
               onClick={() => fileInputRef.current?.click()}
             >
-              Import list CSV
+              Import {providerName} CSV
             </button>
           )}
         </div>
@@ -264,7 +295,7 @@ export default function Picker() {
 
       {hasList ? (
         <p className="hint">
-          Saved locally{fileName ? ` from ${fileName}` : ""}.{" "}
+          {providerName} list saved locally{fileName ? ` from ${fileName}` : ""}.{" "}
           <button type="button" className="text-button" onClick={handleClear}>
             Clear list
           </button>
@@ -272,7 +303,7 @@ export default function Picker() {
       ) : (
         <p className="hint">
           Follow the export steps below, then import the CSV.{" "}
-          <a href="#how-to">How to export your list</a>
+          <a href="#how-to">How to export from {providerName}</a>
         </p>
       )}
     </section>
