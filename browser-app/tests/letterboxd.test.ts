@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test, beforeEach } from "node:test";
 import { parseCsv, parseWatchlistCsv, parseLetterboxdWatchlistCsv, parseImdbWatchlistCsv, normalizeLetterboxdUrl, isMovieType } from "../src/csv.ts";
-import { loadWatchlist, saveWatchlist, clearWatchlist } from "../src/storage.ts";
+import { loadWatchlist, saveWatchlist, clearWatchlist } from "./storageFixture.ts";
 import { enrichTitle } from "../src/enrich.ts";
 
 const fixture = readFileSync(new URL("./fixtures/letterboxd-watchlist.csv", import.meta.url), "utf8");

@@ -32,7 +32,7 @@ test('IMDb custom-list CSV: unique identities, links, quotes, BOM/CRLF and local
     assert.equal(items.length, 4);
     assert.equal(items[0].plot, 'A note, with commas');
     assert.match(items[1].plot, /embedded newline/);
-    assert.equal(items[0].runtime, '2h 22m');
+    assert.equal(items[0].runtimeMinutes, 142);
     assert.equal(items[2].url, 'https://www.imdb.com/title/tt0050083/');
     assert.equal(items.filter((item) => isMovieType(item.type)).length, 3);
     assert.ok(items.includes(pickRandom(items)));
@@ -45,15 +45,17 @@ test('IMDb saved custom lists restore, replace and clear; failed parse leaves st
   globalThis.localStorage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) };
   try {
     const storage = await tsModule('browser-app/src/storage.ts');
-    const saved = { items: parseImdbWatchlistCsv(fixture('custom-list.csv')), moviesOnly: false, importedAt: 1, fileName: 'custom-list.csv' };
-    storage.saveWatchlist(saved);
-    assert.deepEqual(storage.loadWatchlist(), { ...saved, provider: "imdb" });
+    const repository = storage.createOptionsStorage(() => globalThis.localStorage);
+    const saved = { provider: "imdb", items: parseImdbWatchlistCsv(fixture('custom-list.csv')), moviesOnly: false, importedAt: 1, fileName: 'custom-list.csv' };
+    const options = { selectedProvider: "imdb", lists: { imdb: saved, letterboxd: null } };
+    assert.deepEqual(repository.save(options), { ok: true });
+    assert.deepEqual(repository.load().options.lists.imdb, saved);
     assert.throws(() => parseImdbWatchlistCsv('not an export'));
-    assert.deepEqual(storage.loadWatchlist(), { ...saved, provider: "imdb" });
-    storage.saveWatchlist({ ...saved, items: [saved.items[0]], moviesOnly: true });
-    assert.equal(storage.loadWatchlist().items.length, 1);
-    storage.clearWatchlist();
-    assert.equal(storage.loadWatchlist(), null);
+    assert.deepEqual(repository.load().options.lists.imdb, saved);
+    repository.save({ ...options, lists: { ...options.lists, imdb: { ...saved, items: [saved.items[0]], moviesOnly: true } } });
+    assert.equal(repository.load().options.lists.imdb.items.length, 1);
+    repository.save({ ...options, lists: { imdb: null, letterboxd: null } });
+    assert.equal(repository.load().options.lists.imdb, null);
   } finally { delete globalThis.localStorage; }
 });
 

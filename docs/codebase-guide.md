@@ -1,6 +1,6 @@
 # Codebase guide and feature index
 
-Explored on 2026-11-08 against commit `8b3de9897947edcf1af5b8baeca52161a6cee515`. Updated for browser CSV providers and themes (#1/#3/#4) on 2026-11-13. The code remains authoritative as it evolves. [Letterboxd support notes](letterboxd-support.md) distinguish implemented CSV imports from future acquisition options.
+Explored on 2026-11-08 against commit `8b3de9897947edcf1af5b8baeca52161a6cee515`. Updated for the browser architecture refactor on 2026-11-13. Read [coding principles](coding-principles.md) before changing code. The code remains authoritative as it evolves. [Letterboxd support notes](letterboxd-support.md) distinguish implemented CSV imports from future acquisition options.
 
 [IMDb-to-Letterboxd transfer notes](imdb-to-letterboxd-transfer.md) cover the separately requested list-transfer feature, including export and destination import.
 
@@ -23,13 +23,19 @@ Paths below are relative to the repository root. Function names are navigation a
 
 | File | Responsibility and useful symbols |
 | --- | --- |
-| [`browser-app/src/Picker.tsx`](../browser-app/src/Picker.tsx) | Main state and UI; `handleFiles`, `handleMoviesOnly`, `handlePick`, `handleClear`, `persist`, enrichment effect, `MovieDetails`. Also owns its own `pickRandom` and display formatters. |
-| [`browser-app/src/csv.ts`](../browser-app/src/csv.ts) | Internal `parseCsv` tokenizer; exported `parseImdbWatchlistCsv` normalizer and `isMovieType` filter. Import errors and header aliases live here. |
-| [`browser-app/src/types.ts`](../browser-app/src/types.ts) | `Title` and `StoredWatchlist`: the browser app's persisted data contract. |
-| [`browser-app/src/storage.ts`](../browser-app/src/storage.ts) | `loadWatchlist`, `saveWatchlist`, `clearWatchlist`; one local storage key. |
-| [`browser-app/src/enrich.ts`](../browser-app/src/enrich.ts) | `enrichTitle`, `parsePayload`, `shrinkPoster`; picked-title IMDb JSONP lookup, callback cleanup, timeout, in-memory cache. |
-| [`browser-app/src/provider.ts`](../browser-app/src/provider.ts) | Independent provider preference and root theme attribute; `loadSelectedProvider`, `selectProvider`. |
-| [`browser-app/src/main.tsx`](../browser-app/src/main.tsx) | Mounts `Picker` under React `StrictMode` into `#picker`; imports the stylesheet. |
+| [`browser-app/src/main.tsx`](../browser-app/src/main.tsx) | Explicit storage initialization/migration and initial theme before React mounts. |
+| [`browser-app/src/Picker.tsx`](../browser-app/src/Picker.tsx) | Accessible controls and state-driven layout; uses `usePicker`. |
+| [`browser-app/src/usePicker.ts`](../browser-app/src/usePicker.ts) | Browser orchestration: files, stale-read guards, persistence feedback, theme, enrichment lifetime. |
+| [`browser-app/src/pickerState.ts`](../browser-app/src/pickerState.ts) | Pure reducer actions and derived status/current-list selectors. |
+| [`browser-app/src/MovieDetails.tsx`](../browser-app/src/MovieDetails.tsx), [`formatters.ts`](../browser-app/src/formatters.ts) | Sparse-metadata rendering and display formatting. |
+| [`browser-app/src/csv.ts`](../browser-app/src/csv.ts), [`csvTable.ts`](../browser-app/src/csvTable.ts) | Provider format detection and shared CSV tokenizer; the dispatcher tokenizes once. Provider normalizers live in [`imdbCsv.ts`](../browser-app/src/imdbCsv.ts) and [`letterboxdCsv.ts`](../browser-app/src/letterboxdCsv.ts). Direct parser entry points remain available. |
+| [`browser-app/src/types.ts`](../browser-app/src/types.ts), [`titles.ts`](../browser-app/src/titles.ts) | Domain types, movie filter, random selection, metadata merge. |
+| [`browser-app/src/identity.ts`](../browser-app/src/identity.ts) | Canonical native film URLs and namespaced identities. |
+| [`browser-app/src/validation.ts`](../browser-app/src/validation.ts) | Runtime validation of unknown saved values and old formatted runtime conversion. |
+| [`browser-app/src/storage.ts`](../browser-app/src/storage.ts) | `createOptionsStorage`: injected storage access, read-only `load`, explicit `initialize`, result-returning `save`. |
+| [`browser-app/src/storageMigration.ts`](../browser-app/src/storageMigration.ts) | Pure legacy recovery, JSON parsing and compatible single-key serialization. |
+| [`browser-app/src/enrich.ts`](../browser-app/src/enrich.ts), [`jsonp.ts`](../browser-app/src/jsonp.ts) | Validated IMDb metadata, in-flight deduplication/cache, and browser script/timer/global cleanup. |
+| [`browser-app/src/provider.ts`](../browser-app/src/provider.ts) | Provider labels and root theme application; no persistence. |
 | [`browser-app/index.html`](../browser-app/index.html) | Static page shell, export instructions, FAQ, privacy copy, SEO/social tags, JSON-LD, fonts, React entry script. |
 | [`browser-app/src/index.css`](../browser-app/src/index.css) | Browser page theme, responsive layout, picker/result styling, animations. |
 | [`browser-app/vite.config.ts`](../browser-app/vite.config.ts) | React plugin and GitHub Pages repository subpath (`base`). |
@@ -55,22 +61,22 @@ Paths below are relative to the repository root. Function names are navigation a
 
 ### Repository and deployment
 
-[`README.md`](../README.md) routes users to each client. [`AGENTS.md`](../AGENTS.md) routes future implementation work to these reference files. [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) installs with `npm ci` on Node 22, builds the browser app, uploads `browser-app/dist`, and deploys Pages. It runs on relevant `main` pushes or manual dispatch; it does not lint or build the extension. Browser Node regression tests live in `browser-app/tests/`; there is no package test script or extension automated suite.
+[`README.md`](../README.md) routes users to each client. [`AGENTS.md`](../AGENTS.md) routes future implementation work to these reference files. [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) installs with `npm ci` on Node 22, builds the browser app, uploads `browser-app/dist`, and deploys Pages. It runs on relevant `main` pushes or manual dispatch; it does not lint or build the extension. Browser Node regression tests live in `browser-app/tests/`; there is no package test script. The root `tests/imdb-custom-lists.test.mjs` covers browser IMDb imports and extension acquisition/cache contracts.
 
 ## Browser import-to-pick flow
 
-1. `main.tsx` applies the saved provider to the root theme and mounts the picker. Lazy initial state restores that provider’s list/filter. A native radio group switches providers, restoring ready/empty state and clearing displayed picks/errors without saving or relabeling lists.
-2. `handleFiles` reads the first selected file using `FileReader`, calls `parseWatchlistCsv`, rejects files from the other provider, replaces the selected provider’s list, clears the selected result, and persists. Failed parsing leaves the previous list available with an error.
-3. `parseCsv` handles BOM, quoted fields, escaped quotes, embedded newlines, CRLF/LF/CR, and blank rows. Headers are trimmed, lowercased, and whitespace-normalized. IMDb/watchlist formats use the first nonempty row as the header; Letterboxd v7 custom lists skip the metadata preamble and locate their film table.
-4. `parseImdbWatchlistCsv` maps IMDb header aliases, converts numbers and runtime minutes, deduplicates IDs, and skips rows without a usable URL. It accepts a title/name column or an IMDb ID column, but every retained item needs an HTTP-prefixed URL or a `tt...` ID from which an IMDb URL can be built. Missing metadata becomes `null` or `[]`.
-5. The memoized picking pool applies `isMovieType` locally. Unknown types pass; normalized `movie` and `tvmovie` pass; other known types are excluded. Changing the filter preserves the full imported list.
-6. `handlePick` selects from that pool and enters `result`. `MovieDetails` renders available metadata. The result link uses `picked.url`, with an action label matching the picked title’s provider.
-7. For IMDb results lacking a poster or stars, the effect calls `enrichTitle`. Letterboxd picks skip it. Successful metadata is merged into the selected title and list, then saved. Effect cleanup ignores stale results.
-8. Clear removes only the selected provider’s saved list and resets its filter/UI. Import replacement is exposed in both `ready` and `result`; `result` also shows Pick again and the title link.
+1. `main.tsx` creates the storage adapter and explicitly initializes migration before rendering. The loaded snapshot and storage interface are passed to the picker; React initialization performs no storage writes.
+2. `Picker` renders controls and delegates intentions to `usePicker`. A pure reducer holds provider options, a picked ID, feedback and a source revision. List presence, selected details, eligible pool and status text are derived.
+3. File imports use `File.text()`. A request counter ignores reads superseded by another import, provider switch, clear, or unmount. `parseWatchlistCsv` tokenizes once and dispatches IMDb, Letterboxd watchlist or v7/table custom-list normalization. Wrong-provider and malformed imports retain the previous list.
+4. Import normalization canonicalizes native film URLs/IDs, deduplicates first valid rows, and keeps missing metadata safe. Letterboxd personal ratings are ignored. Runtime remains numeric until display. Custom-list preambles supply an optional source label.
+5. Reducer actions calculate a complete new snapshot. The hook saves changed options outside React state updaters. Save failures retain usable session state and show a visible unsaved warning. A successful later save persists the whole current snapshot.
+6. The movie filter derives eligible titles without deleting source rows. Known movie/TV-movie types and unknown types pass. Selecting a pick stores only its ID; rendered details always come from the current full list.
+7. IMDb picks missing poster/credits request optional JSONP enrichment. The client validates the exact requested ID, shares in-flight requests, caches valid responses and permits retry after transport/invalid-payload failures. Effect cleanup ignores stale source/pick responses. Letterboxd picks skip IMDb requests even if an external IMDb ID exists.
+8. Source replacement/clear resets the pick and increments source revision. Switching providers restores its existing list/filter/label. Filter and enrichment updates retain `importedAt` and set `updatedAt`.
 
-The JSONP request is `https://sg.media-imdb.com/suggests/t/<id>.json`, using a global callback named `imdb$<id>`. Only IMDb-style IDs qualify. It loads poster and up to three stars, not full title details. Errors/timeouts resolve empty metadata after at most seven seconds; empty results are also cached in memory for that page session. Payload matching prefers the exact ID but falls back to another title entry, then the first entry.
+The JSONP endpoint remains `https://sg.media-imdb.com/suggests/t/<id>.json`, with a seven-second timeout. Cleanup restores previous callbacks and removes scripts/timers. Failure leaves the basic pick usable. Google Fonts, IMDb metadata and poster image hosts can receive network requests; the CSV itself is read locally.
 
-The CSV file is read locally, but picking can contact IMDb and image hosts; the static page also loads Google Fonts. Read privacy copy alongside these network paths when adding providers.
+For a manual reading path, start with `main.tsx`, then `Picker`, `usePicker`, and `pickerState`. Follow imports into the CSV, storage and enrichment modules for each data flow.
 
 ## Extension import-to-pick flow
 
@@ -98,17 +104,28 @@ The `cached` reply flag reflects an actual cache hit. `getStatus` reports counts
 
 ## Data and persistence contracts
 
-The browser’s `Title` additionally requires `provider` and may carry `imdbId`; Letterboxd identities are namespaced film slugs or short links. Browser titles and the extension’s plain title objects carry the same core fields: `id`, `title`, `year`, `rating`, `voteCount`, `type`, `runtime`, `director`, `stars`, `plot`, `poster`, `metascore`, `certificate`, and `url`. The extension additionally produces `displayTitle`. There is no enforced shared schema. IMDb ratings/votes are currently implicit, runtime is formatted text, and `stars` is an array. Browser rendering assumes `stars` exists.
+The browser’s `Title` additionally requires `provider` and may carry `imdbId`; browser runtime uses `runtimeMinutes`, while Letterboxd identities are namespaced film slugs or short links. Browser titles and the extension’s plain title objects carry the same core fields: `id`, `title`, `year`, `rating`, `voteCount`, `type`, `director`, `stars`, `plot`, `poster`, `metascore`, `certificate`, and `url`. The extension additionally produces `displayTitle`. There is no enforced shared schema. IMDb ratings/votes are currently implicit, browser runtime is numeric minutes (the extension retains formatted text), and `stars` is an array. Browser rendering assumes `stars` exists.
 
 | Location | Stored contract | Compatibility considerations |
 | --- | --- | --- |
-| Browser `localStorage`, `imdb-watchlist-picker-v1:imdb` and `:letterboxd` | `StoredWatchlist`: `{provider, items, moviesOnly, importedAt, fileName, sourceName?, importWarnings?}` | One isolated list/filter per provider; legacy `imdb-watchlist-picker-v1` remains an active-record fallback. Missing provider means IMDb. A first different-provider save preserves the legacy record in its own slot before replacing the fallback. Writes can throw. |
-| Browser `localStorage`, `watchlist-picker-provider-v1` | `imdb` or `letterboxd` | Independent UI preference. Invalid/missing/unavailable storage defaults to IMDb. Switching updates the root theme and preference without writing list records. |
+| Browser `localStorage`, `watchlist-picker-options` | Two entries, `imdb` and `letterboxd`, each `{selected: boolean, watchlist: StoredWatchlist \| null}`. A watchlist contains `{provider, items, moviesOnly, importedAt, updatedAt?, fileName, sourceName?, importWarnings?}`. | One copy of each provider's list/filter and the selected theme in one unversioned key. Clearing one list keeps the other provider and selected theme. Writes return explicit success/failure results. |
 | Extension `chrome.storage.sync` | `watchlistSource` string and `moviesOnly` boolean | Synced settings are separate from the device-local title cache. |
 | Extension `chrome.storage.local` | `cachedWatchlist: {source, items, fetchedAt, moviesOnly, complete, sourceCount}`, `cachedAt`, `cacheVersion`; also `importState` and `importWindowId` | `source` is the parsed `{kind, id, url}`. Cache version is 3; TTL is one hour. |
 | IMDb page `sessionStorage` | `imdb-scrape-params: {baseUrl, kind, moviesOnly}` | Injection handoff only; separate from extension storage. |
 
-Browser `importedAt` is rewritten on filter changes and enrichment saves as well as imports, so it is not a reliable original-import timestamp. Extension `importState` merges fields such as `status`, `message`, `error`, `count`, and `updatedAt`; statuses are `idle`, `running`, `done`, and `error`.
+Browser `importedAt` is now set only at import; filter/enrichment writes set `updatedAt`. Older records keep their existing timestamp because an earlier original import time cannot be reconstructed. Extension `importState` merges fields such as `status`, `message`, `error`, `count`, and `updatedAt`; statuses are `idle`, `running`, `done`, and `error`.
+
+Browser storage migrates `imdb-watchlist-picker-v1`, its `:imdb`/`:letterboxd` copies,
+and `watchlist-picker-provider-v1` during explicit startup initialization. Plain reads recover legacy data without writing. Provider copies take precedence
+over the duplicated active record; that record fills a missing provider's list.
+Missing legacy list provider means IMDb. A valid old provider preference is kept;
+a missing preference uses the old active provider, or IMDb if no list exists.
+An invalid preference defaults to IMDb. All old
+keys are removed only after successfully writing the unified record. A failed
+migration can still restore the old data without deleting it. Once a unified
+record exists it is authoritative, so stale legacy data cannot restore a cleared
+list. Old runtime text such as `2h 22m` becomes `runtimeMinutes: 142` during decoding. In-memory options hold one `selectedProvider`; serialization retains the requested two provider flags. `browser-app/tests/storage.test.ts` covers migration, failure safety, and
+provider isolation alongside the existing importer/preference tests.
 
 Extension cache usability requires matching canonical source URL, movie filter, freshness, current cache version and confirmed completeness. Empty and metadata-sparse complete lists are valid. Source/filter settings are rechecked before saving a fetch result. Failed refresh retains the previous compatible cache; partial results are never saved. Version 2 caches require reimport; existing sync settings remain valid. See [IMDb custom-list verification](imdb-custom-lists.md) for tests and remaining live checks.
 
@@ -116,12 +133,12 @@ Extension cache usability requires matching canonical source URL, movie filter, 
 
 | Change | Read/change together |
 | --- | --- |
-| Import another CSV format | `csv.ts`, `types.ts`, `Picker.tsx`, `storage.ts`, static instructions in `index.html`; see the Letterboxd notes. |
+| Import another CSV format | `csv.ts`, the provider parser, `identity.ts`, `types.ts`, `validation.ts`, `usePicker.ts`, static instructions in `index.html`; see the Letterboxd notes. |
 | Read another site's lists in the extension | `manifest.json`, `watchlist.js`, a provider scraper, `service-worker.js`, `popup.js`, `popup.html`; see the Letterboxd notes. |
 | Transfer IMDb lists to Letterboxd | Browser `csv.ts`, `types.ts`, `Picker.tsx`, storage and a new export boundary if needed; extension acquisition/cache and popup controls if included. Read the transfer notes for the existing Letterboxd import route and preservation requirements. |
-| Add filtering or avoid repeat picks | Browser `Picker.tsx` and `isMovieType`; extension `pickRandom`, scraper filtering, cache behavior, and popup settings. Current filtering happens at different stages. |
+| Add filtering or avoid repeat picks | Browser `pickerState.ts`, `usePicker.ts`, and `titles.ts`; extension `pickRandom`, scraper filtering, cache behavior, and popup settings. Current filtering happens at different stages. |
 | Change title details or add metadata | Browser `types.ts`, `csv.ts`, `enrich.ts`, `MovieDetails`; extension `parseTitleNode`, DOM fallback, `showMovie`, popup markup; both persistence contracts. |
-| Change source/settings or restore behavior | Browser `storage.ts` and picker effects; extension sync/local helpers, message contract, `saveSettingsIfNeeded`, `applyImportState`. |
+| Change source/settings or restore behavior | Browser `storage.ts`, `validation.ts`, `storageMigration.ts`, `usePicker.ts`, and reducer actions; extension sync/local helpers, message contract, `saveSettingsIfNeeded`, `applyImportState`. |
 | Change appearance or copy | Browser `Picker.tsx`, `index.css`, `index.html`; extension popup HTML/JS/CSS. Branding and link labels are duplicated. |
 | Change hosting or site URL | Vite `base`, canonical/social/JSON-LD URLs, `public/sitemap.xml`, `public/robots.txt`, README links, Pages workflow. |
 
@@ -169,8 +186,8 @@ replace manual browser and fresh account-export verification.
 
 ## Provider themes and verification (#4)
 
-`provider.ts` persists selection independently; `main.tsx` applies it before mounting.
-`Picker` restores provider-keyed lists and filters, including empty-list preferences,
+`provider.ts` applies the theme; selection is persisted through the options adapter. `main.tsx` initializes migration and applies the theme before mounting.
+`Picker` restores provider-specific lists and filters, including empty-list preferences,
 and invalidates pending file reads when switching. Source labels from #3 restore on
 reload and switching. A wrong-provider CSV fails without replacing either list.
 `index.css` uses `html[data-provider]` tokens for backgrounds, surfaces, controls,
@@ -195,3 +212,9 @@ cards are identical `info-card` elements with no outer margins inside a
 both themes, expanded or collapsed. Extension body inset/section gaps are 16px;
 settings/action groups own smaller internal gaps. Both apps use 44px minimum
 primary controls and visible focus. Keep component geometry independent of theme.
+
+## Browser refactor verification
+
+The refactor enables TypeScript strict mode and preserves the single-key disk layout. Browser Node tests cover provider imports, pure state transitions, canonical identity, metadata validation/deduplication/retry/JSONP cleanup, read-only recovery, explicit migration, and persistence failures. The root IMDb suite also exercises its unchanged extension scenarios.
+
+A temporary headless Chromium harness exercised real file-input events, legacy IMDb restoration and runtime conversion, import/filter/pick, provider isolation, custom-list labels, failed/wrong-provider replacement, same-filename replacement, reload, clear, stale file reads, quota failure/recovery, inaccessible storage, and 320px overflow. Intercepted JSONP responses verified that enrichment preserves a newer filter and does not update a replacement source. No runtime exceptions occurred. External provider responses were blocked or simulated; these checks do not establish live IMDb endpoint or fresh authenticated export compatibility.

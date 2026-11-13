@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { isMovieType, parseWatchlistCsv } from '../src/csv.ts';
-import { clearWatchlist, loadWatchlist, saveWatchlist } from '../src/storage.ts';
+import { clearWatchlist, loadWatchlist, saveWatchlist } from './storageFixture.ts';
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 

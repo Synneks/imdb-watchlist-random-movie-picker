@@ -1,20 +1,8 @@
-import type { Provider } from "./types";
+import type { Provider } from "./types.ts";
 
-const PROVIDER_KEY = "watchlist-picker-provider-v1";
+export const PROVIDER_NAMES: Record<Provider, string> = { imdb: "IMDb", letterboxd: "Letterboxd" };
 
-export function loadSelectedProvider(): Provider {
-  try {
-    return localStorage.getItem(PROVIDER_KEY) === "letterboxd" ? "letterboxd" : "imdb";
-  } catch {
-    return "imdb";
-  }
-}
-
-export function selectProvider(provider: Provider): void {
+/** Update both React's theme and the separately authored export instructions. */
+export function applyProviderTheme(provider: Provider): void {
   document.documentElement.dataset.provider = provider;
-  try {
-    localStorage.setItem(PROVIDER_KEY, provider);
-  } catch {
-    // Switching still works for this session when browser storage is unavailable.
-  }
 }

@@ -1,58 +1,55 @@
-import type { Provider, StoredWatchlist, Title } from "./types";
+import type { PickerOptions } from "./types.ts";
+import { decodeOptions, emptyOptions } from "./validation.ts";
+import { LEGACY_KEYS, OPTIONS_KEY, migrateLegacy, parseJson, serializeOptions } from "./storageMigration.ts";
 
-const KEY = "imdb-watchlist-picker-v1";
-const providerKey = (provider: Provider) => `${KEY}:${provider}`;
+export type SaveResult = { ok: true } | { ok: false; error: string };
+export type LoadedOptions = { options: PickerOptions; warning: string | null; needsMigration: boolean };
+export type OptionsStorage = ReturnType<typeof createOptionsStorage>;
+type KeyValueStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-function decode(raw: string | null): StoredWatchlist | null {
-  if (!raw) return null;
-  const parsed = JSON.parse(raw);
-  if (!parsed || !Array.isArray(parsed.items)) return null;
-  // Saved lists predating providers are IMDb lists. Keep their IDs and metadata.
-  const provider: Provider = parsed.provider === "letterboxd" ? "letterboxd" : "imdb";
-  if (parsed.provider != null && parsed.provider !== "imdb" && parsed.provider !== "letterboxd") return null;
-  if (parsed.items.some((item: Title) => !item || typeof item.id !== "string" || typeof item.title !== "string" || typeof item.url !== "string" || (item.provider != null && item.provider !== provider))) return null;
-  return {
-    ...parsed,
-    provider,
-    ...(parsed.sourceName === undefined ? {} : { sourceName: typeof parsed.sourceName === "string" ? parsed.sourceName : undefined }),
-    items: parsed.items.map((item: Title) => ({
-      ...item,
-      provider,
-      ...(provider === "imdb" && /^tt\d+$/i.test(item.id) ? { imdbId: item.imdbId ?? item.id.toLowerCase() } : {}),
-      stars: Array.isArray(item.stars) ? item.stars : [],
-    })),
-    moviesOnly: parsed.moviesOnly === true,
-    fileName: typeof parsed.fileName === "string" ? parsed.fileName : "",
-  };
-}
-
-/** No argument restores the last active list; a provider isolates its saved list/settings. */
-export function loadWatchlist(provider?: Provider): StoredWatchlist | null {
-  try {
-    if (provider) {
-      const saved = decode(localStorage.getItem(providerKey(provider)));
-      if (saved?.provider === provider) return saved;
+/** Storage access is injected because browser permissions can reject even the property getter. */
+export function createOptionsStorage(access: () => KeyValueStorage) {
+  /** A read never writes or removes keys. The caller decides when to commit migration. */
+  function load(): LoadedOptions {
+    try {
+      const storage = access();
+      const raw = storage.getItem(OPTIONS_KEY);
+      if (raw !== null) {
+        const decoded = decodeOptions(parseJson(raw));
+        return {
+          options: decoded?.options ?? emptyOptions(),
+          warning: !decoded || decoded.damaged ? "Some saved data could not be restored. Import the affected list again." : null,
+          needsMigration: false,
+        };
+      }
+      const legacy = LEGACY_KEYS.map(key => storage.getItem(key));
+      return { options: migrateLegacy(legacy), warning: null, needsMigration: legacy.some(value => value !== null) };
+    } catch {
+      return { options: emptyOptions(), warning: "Browser storage is unavailable. Changes cannot be saved.", needsMigration: false };
     }
-    const legacy = decode(localStorage.getItem(KEY));
-    return !provider || legacy?.provider === provider ? legacy : null;
-  } catch {
-    return null;
   }
-}
 
-export function saveWatchlist(data: StoredWatchlist): void {
-  // Preserve a pre-provider IMDb list before another import replaces the legacy active key.
-  const previous = loadWatchlist();
-  if (previous && previous.provider !== data.provider && !localStorage.getItem(providerKey(previous.provider))) {
-    localStorage.setItem(providerKey(previous.provider), JSON.stringify(previous));
+  /** A failed write preserves existing data; obsolete-key cleanup is best effort after commit. */
+  function save(options: PickerOptions): SaveResult {
+    try {
+      const storage = access();
+      storage.setItem(OPTIONS_KEY, serializeOptions(options));
+      for (const key of LEGACY_KEYS) {
+        try { storage.removeItem(key); } catch { /* The unified record already wins on subsequent reads. */ }
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Could not save changes. Browser storage may be blocked or full." };
+    }
   }
-  localStorage.setItem(providerKey(data.provider), JSON.stringify(data));
-  localStorage.setItem(KEY, JSON.stringify(data));
-}
 
-export function clearWatchlist(provider?: Provider): void {
-  const active = loadWatchlist();
-  const target = provider ?? active?.provider;
-  if (target) localStorage.removeItem(providerKey(target));
-  if (!provider || active?.provider === provider) localStorage.removeItem(KEY);
+  /** Commit legacy conversion once at startup, before React starts rendering. */
+  function initialize(): LoadedOptions {
+    const loaded = load();
+    if (!loaded.needsMigration) return loaded;
+    const result = save(loaded.options);
+    return { ...loaded, needsMigration: !result.ok, warning: result.ok ? loaded.warning : result.error };
+  }
+
+  return { load, save, initialize };
 }

@@ -1,5 +1,9 @@
 # Project context
 
+Random Movie Picker helps users choose a random film from their IMDb or Letterboxd lists. The repository contains an independently deployed browser CSV picker and a Chrome extension for list URL imports. Both preserve source membership and allow repeated random picks.
+
+Before generating or changing code, read [docs/coding-principles.md](docs/coding-principles.md). For browser work, also read [browser-app/AGENTS.md](browser-app/AGENTS.md) for the app's purpose and user workflow.
+
 Read [docs/codebase-guide.md](docs/codebase-guide.md) before implementing a feature. It indexes the source files, traces both app flows, and records storage contracts and validation commands. Use its feature table to select the files to inspect.
 
 For issue-based work, use [docs/feature-issues.md](docs/feature-issues.md) to locate the issue, then fetch its current GitHub description and comments for scope and acceptance criteria. It also maps the branding/provider-toggle work and feature dependencies.

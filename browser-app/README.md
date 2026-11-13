@@ -64,7 +64,9 @@ matching compact cards that start collapsed and toggle by clicking anywhere in t
 provider before importing; a CSV from the other provider shows an error and keeps
 the current list.
 
-Selection is remembered separately from saved lists. Each provider retains one
+Selection and both providers' lists share one `watchlist-picker-options` local-storage
+record, with `imdb` and `letterboxd` entries. Older storage keys migrate automatically
+and are removed after a successful save. Each provider retains one
 list, its source label/filename, and its movie filter, including an empty-list
 filter preference. Switching clears the displayed pick/error and restores the
 selected provider's ready or empty state; it never merges lists. Clear affects only
@@ -87,3 +89,9 @@ Both help cards use the same `info-card` component rules (16px padding, no outer
 margins). Their `help-stack` parent supplies the 16px gap and the separation from
 the picker. Themes change colors without changing spacing or component shapes.
 The extension follows the same spacing conventions in its independent stylesheet.
+
+## Maintaining the app
+
+Read [AGENTS.md](AGENTS.md), the [coding principles](../docs/coding-principles.md), and the [codebase guide](../docs/codebase-guide.md) before changing code. The guide indexes the view, pure state transitions, file parsing, validated storage/migration, and metadata transport.
+
+Storage migration is committed explicitly at startup. A failed save leaves the current session usable and shows an unsaved warning. The single `watchlist-picker-options` key and its two provider slots remain compatible; old runtime strings decode into numeric `runtimeMinutes`. Import timestamps now remain stable, with later preference/metadata changes recorded in `updatedAt`.

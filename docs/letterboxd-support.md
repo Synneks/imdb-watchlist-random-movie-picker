@@ -104,10 +104,11 @@ provider-toggle UX (#4), and the extension remain outside #3.
 
 The neutral Watchlist Random Picker UI offers IMDb/Letterboxd radios and themes the
 whole page via a root attribute. Import requires the selected provider to match the
-detected CSV. Selected provider uses `watchlist-picker-provider-v1`; saved data uses
-isolated `imdb-watchlist-picker-v1:imdb` and `:letterboxd` slots. The old active key
-remains a compatible fallback, with legacy IMDb data preserved on first Letterboxd
-save. Switching restores list, source label and movie filter without combining data.
+detected CSV. Selection and saved data share `watchlist-picker-options`, with `imdb`
+and `letterboxd` objects containing `selected` and `watchlist` fields. Old provider
+slots, active-list fallback, and the separate selection key migrate automatically;
+startup explicitly commits migration, and their keys are removed after a successful write. Plain storage reads do not mutate keys. In memory the selection is one provider value; the serializer retains the two-flag disk format. Invalid saved metadata is rebuilt into safe typed fields; old runtime text becomes numeric minutes. Switching restores list, source
+label and movie filter without combining data.
 Only IMDb picks request IMDb enrichment. Static instructions/FAQ change with provider.
 The historical baseline assumptions above are retained for context; current contracts
 are recorded in the codebase guide. ZIP/pasted URL/extension import remain future work.

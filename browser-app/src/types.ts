@@ -1,15 +1,17 @@
+/** Sources supported by the picker and its provider-specific saved lists. */
 export type Provider = "imdb" | "letterboxd";
 
+/** Normalized source data. Display formatting belongs to the view. */
 export type Title = {
   provider: Provider;
-  imdbId?: string;
   id: string;
+  imdbId?: string;
   title: string;
   year: number | null;
   rating: number | null;
   voteCount: number | null;
   type: string | null;
-  runtime: string | null;
+  runtimeMinutes: number | null;
   director: string | null;
   stars: string[];
   plot: string | null;
@@ -19,12 +21,23 @@ export type Title = {
   url: string;
 };
 
+/** Full imported source and its preferences; picking never removes source rows. */
 export type StoredWatchlist = {
   provider: Provider;
-  importWarnings?: string[];
-  sourceName?: string;
   items: Title[];
   moviesOnly: boolean;
   importedAt: number;
+  updatedAt?: number;
   fileName: string;
+  sourceName?: string;
+  importWarnings?: string[];
 };
+
+/** One selected provider in memory; the disk serializer owns the historical flag layout. */
+export type PickerOptions = {
+  selectedProvider: Provider;
+  lists: Record<Provider, StoredWatchlist | null>;
+};
+
+/** Recognized source format plus optional custom-list metadata. */
+export type ParsedList = { provider: Provider; items: Title[]; sourceName?: string };
