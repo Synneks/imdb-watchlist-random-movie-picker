@@ -100,3 +100,13 @@ test("Letterboxd-only identities never touch JSONP/browser APIs", async () => {
     assert.deepEqual(await enrichTitle(item.id), { poster: null, stars: [] });
   }
 });
+
+
+test("first import from another provider preserves legacy-only IMDb data", () => {
+  const items = parseImdbWatchlistCsv("Const,Title\ntt123,Legacy");
+  values.set("imdb-watchlist-picker-v1", JSON.stringify({ items, fileName: "legacy.csv", importedAt: 1, moviesOnly: true }));
+  saveWatchlist({ ...parseWatchlistCsv(fixture), fileName: "watchlist.csv", importedAt: 2, moviesOnly: false });
+  assert.equal(loadWatchlist("imdb")?.fileName, "legacy.csv");
+  assert.equal(loadWatchlist("imdb")?.items[0].id, "tt123");
+  assert.equal(loadWatchlist("letterboxd")?.items.length, 4);
+});
