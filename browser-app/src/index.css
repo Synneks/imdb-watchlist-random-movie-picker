@@ -302,6 +302,7 @@ body > * {
 .how-to,
 .faq,
 .site-footer {
+  width: min(720px, calc(100% - 32px));
   max-width: 720px;
   margin: 0 auto;
   padding: 36px 20px;
