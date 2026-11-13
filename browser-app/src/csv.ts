@@ -196,9 +196,14 @@ export function parseLetterboxdWatchlistCsv(text: string): Title[] {
   if (nameIndex < 0 || uriIndex < 0) {
     throw new Error("Unsupported Letterboxd watchlist CSV. Extract watchlist.csv from your account export (Name and Letterboxd URI columns are required).");
   }
+  return normalizeLetterboxdFilms(rows.slice(1), headers, uriIndex);
+}
+
+function normalizeLetterboxdFilms(rows: string[][], headers: string[], uriIndex: number): Title[] {
+  const nameIndex = headers.indexOf("name");
   const items: Title[] = [];
   const seen = new Set<string>();
-  for (const row of rows.slice(1)) {
+  for (const row of rows) {
     const title = cell(row, nameIndex);
     const identity = normalizeLetterboxdUrl(cell(row, uriIndex));
     if (!title || !identity || seen.has(identity.id)) continue;
@@ -211,17 +216,52 @@ export function parseLetterboxdWatchlistCsv(text: string): Title[] {
       director: null, stars: [], plot: null, poster: null, metascore: null, certificate: null,
     });
   }
-  if (!items.length) throw new Error("No valid films found in that Letterboxd watchlist CSV. Rows need a name and a Letterboxd film link.");
+  if (!items.length) throw new Error("No valid films found in that Letterboxd CSV. Rows need a name and a Letterboxd film link.");
   return items;
 }
 
-export function parseWatchlistCsv(text: string): { provider: Provider; items: Title[] } {
-  const headers = (parseCsv(text)[0] ?? []).map(normalizeHeader);
+export type ParsedList = { provider: Provider; items: Title[]; sourceName?: string };
+
+function isCustomFilmHeader(row: string[]): boolean {
+  const headers = row.map(normalizeHeader);
+  return ["position", "name", "url"].every(header => headers.includes(header));
+}
+
+/** v7 account-list exports contain a metadata table before the film table. */
+export function parseLetterboxdCustomListCsv(text: string): ParsedList {
+  const rows = parseCsv(text);
+  const marker = normalizeHeader(rows[0]?.[0] ?? "");
+  const hasPreamble = marker === "letterboxd list export v7";
+  const filmIndex = hasPreamble ? rows.findIndex(isCustomFilmHeader) : 0;
+  if (filmIndex < 0 || !isCustomFilmHeader(rows[filmIndex] ?? [])) {
+    throw new Error("Unsupported Letterboxd custom-list CSV. Expected a Position, Name and URL film table, optionally after a v7 list preamble.");
+  }
+  let sourceName: string | undefined;
+  if (hasPreamble) {
+    const metadataHeaders = (rows[1] ?? []).map(normalizeHeader);
+    if (["date", "name", "tags", "url", "description"].every(header => metadataHeaders.includes(header)) && filmIndex > 2) {
+      sourceName = cell(rows[2], metadataHeaders.indexOf("name")) || undefined;
+    }
+  }
+  const headers = rows[filmIndex].map(normalizeHeader);
+  return {
+    provider: "letterboxd",
+    sourceName,
+    items: normalizeLetterboxdFilms(rows.slice(filmIndex + 1), headers, headers.indexOf("url")),
+  };
+}
+
+export function parseWatchlistCsv(text: string): ParsedList {
+  const rows = parseCsv(text);
+  const headers = (rows[0] ?? []).map(normalizeHeader);
+  if (headers[0]?.startsWith("letterboxd list export") || isCustomFilmHeader(rows[0] ?? [])) {
+    return parseLetterboxdCustomListCsv(text);
+  }
   if (headers.includes("letterboxd uri")) {
     return { provider: "letterboxd", items: parseLetterboxdWatchlistCsv(text) };
   }
   if (headers.some((header) => ["const", "imdb id", "tconst", "url", "title url"].includes(header))) {
     return { provider: "imdb", items: parseImdbWatchlistCsv(text) };
   }
-  throw new Error("Unsupported or empty CSV. Import an IMDb list export or the extracted Letterboxd watchlist.csv; ZIP files and list URLs are not supported.");
+  throw new Error("Unsupported or empty CSV. Import an IMDb list export or an extracted Letterboxd watchlist/custom-list CSV; ZIP files and list URLs are not supported.");
 }

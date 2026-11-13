@@ -44,6 +44,7 @@ export default function Picker() {
   const [provider, setProvider] = useState<Provider>("imdb");
   const [items, setItems] = useState<Title[]>([]);
   const [fileName, setFileName] = useState("");
+  const [sourceName, setSourceName] = useState("");
   const [mode, setMode] = useState<Mode>("empty");
   const [picked, setPicked] = useState<Title | null>(null);
   const [error, setError] = useState("");
@@ -56,6 +57,7 @@ export default function Picker() {
     setItems(stored.items);
     setMoviesOnly(stored.moviesOnly);
     setFileName(stored.fileName);
+    setSourceName(stored.sourceName ?? "");
     setMode("ready");
     setStatus(`${stored.items.length} titles saved`);
   }, []);
@@ -94,6 +96,7 @@ export default function Picker() {
           moviesOnly,
           importedAt: Date.now(),
           fileName,
+          sourceName,
         });
         return next;
       });
@@ -102,20 +105,21 @@ export default function Picker() {
     return () => {
       cancelled = true;
     };
-  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName, provider, picked?.provider, picked?.imdbId]);
+  }, [picked?.id, picked?.poster, picked?.stars.length, moviesOnly, fileName, sourceName, provider, picked?.provider, picked?.imdbId]);
 
   const pool = useMemo(() => {
     if (!moviesOnly) return items;
     return items.filter((item) => isMovieType(item.type));
   }, [items, moviesOnly]);
 
-  function persist(nextItems: Title[], nextMoviesOnly: boolean, nextFileName: string, nextProvider = provider) {
+  function persist(nextItems: Title[], nextMoviesOnly: boolean, nextFileName: string, nextProvider = provider, nextSourceName = sourceName) {
     saveWatchlist({
       provider: nextProvider,
       items: nextItems,
       moviesOnly: nextMoviesOnly,
       importedAt: Date.now(),
       fileName: nextFileName,
+      sourceName: nextSourceName || undefined,
     });
   }
 
@@ -130,10 +134,11 @@ export default function Picker() {
         const text = String(reader.result ?? "");
         const imported = parseWatchlistCsv(text);
         const parsed = imported.items;
-        persist(parsed, moviesOnly, file.name, imported.provider);
+        persist(parsed, moviesOnly, file.name, imported.provider, imported.sourceName ?? "");
         setProvider(imported.provider);
         setItems(parsed);
         setFileName(file.name);
+        setSourceName(imported.sourceName ?? "");
         setPicked(null);
         setMode("ready");
 
@@ -171,7 +176,7 @@ export default function Picker() {
       setError(
         pool.length === 0 && items.length > 0
           ? "No movies match that filter. Uncheck Movies & TV movies only."
-          : "Import an IMDb list or Letterboxd watchlist CSV first."
+          : "Import an IMDb or Letterboxd list CSV first."
       );
       return;
     }
@@ -186,6 +191,7 @@ export default function Picker() {
     setItems([]);
     setPicked(null);
     setFileName("");
+    setSourceName("");
     setMode("empty");
     setStatus("Upload an IMDb or Letterboxd CSV to get started");
     setError("");
@@ -264,7 +270,7 @@ export default function Picker() {
 
       {hasList ? (
         <p className="hint">
-          Saved locally{fileName ? ` from ${fileName}` : ""}.{" "}
+          Saved locally{sourceName || fileName ? ` from ${sourceName || fileName}` : ""}.{" "}
           <button type="button" className="text-button" onClick={handleClear}>
             Clear list
           </button>

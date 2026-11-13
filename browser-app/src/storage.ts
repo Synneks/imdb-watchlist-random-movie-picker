@@ -14,6 +14,7 @@ function decode(raw: string | null): StoredWatchlist | null {
   return {
     ...parsed,
     provider,
+    ...(parsed.sourceName === undefined ? {} : { sourceName: typeof parsed.sourceName === "string" ? parsed.sourceName : undefined }),
     items: parsed.items.map((item: Title) => ({
       ...item,
       provider,

@@ -76,3 +76,26 @@ Update the browser's picker controls, status/errors, source hint, result link la
 Useful regression cases when implementing the parser/model changes: IMDb CSV remains supported; a real Letterboxd watchlist and custom list import; BOM, quoted commas/newlines, optional fields, duplicate film rows, any observed preamble, malformed URLs, empty/unsupported files, missing metadata, reload/replace/clear, and a failed import preserving the previous list. Test URL normalization with actual supported URL variants. Enrichment must not request IMDb data for a Letterboxd-only identity, and unavailable metadata must not prevent random selection.
 
 For extension URL support, additionally verify all pages are collected, repeat page content cannot silently bias the pool, blocked or login pages report an error, source/filter changes invalidate the right cache, valid sparse lists remain cacheable, and progress recovers after a failed import. These are future acceptance checks, not tests already present in the repository.
+
+## Implemented custom-list CSV path (#3)
+
+The browser importer now extends #1's provider-aware normalizer/storage with
+`parseLetterboxdCustomListCsv`. It recognizes the public v7 marker (including
+comma-padded variants), skips the list metadata table, then normalizes films from
+`Position,Name,Year,URL,Description`. A table-only form is also accepted. Rows keep
+file order; duplicate normalized identities collapse. `StoredWatchlist.sourceName`
+is optional and restored/displayed with filename fallback. Unknown export versions
+fail explicitly; invalid film rows are skipped and no-valid-film imports fail.
+List descriptions and item notes are not film plots or ratings.
+
+The v7 shape was independently checked against two public CSVs; the committed
+fixtures reconstruct/sanitize those shapes and add edge cases. See
+[provenance](../browser-app/tests/fixtures/CUSTOM-LISTS.md) for fixed source revisions.
+This is not a fresh authenticated account-export verification. Official account
+export help confirms the ZIP-of-CSVs route, not the exact list schema. Live account
+export and browser workflow checks must be reported separately from parser tests.
+
+Picking and IMDb-enrichment guards are reused from #1. Short boxd.it identities and
+long film slugs are each normalized offline; alias equivalence requires a redirect
+lookup and is not inferred from a title/year pair. ZIP upload, list-URL fetching,
+provider-toggle UX (#4), and the extension remain outside #3.

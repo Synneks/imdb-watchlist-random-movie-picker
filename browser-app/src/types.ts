@@ -22,6 +22,7 @@ export type Title = {
 export type StoredWatchlist = {
   provider: Provider;
   importWarnings?: string[];
+  sourceName?: string;
   items: Title[];
   moviesOnly: boolean;
   importedAt: number;

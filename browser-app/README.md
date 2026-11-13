@@ -25,3 +25,32 @@ The site is static HTML, so Google can index the heading, CSV instructions, and 
 GitHub Pages is fine for search. Ranking still needs links and time. A custom domain later helps branding, not crawlability.
 
 To ask Google to index the URL: [Search Console](https://search.google.com/search-console) → add the GitHub Pages property → URL inspection → Request indexing.
+
+## Letterboxd custom lists
+
+Use Letterboxd's account export in **Settings** in a desktop browser, extract the
+ZIP, then import the desired CSV from its `lists` folder using **Import CSV**.
+Upload one extracted list at a time. The importer accepts the observed v7
+metadata preamble and `Position,Name,Year,URL,Description` film table, or that film
+table alone. Name and URL are required; year and notes are optional. List notes
+are not displayed as film plots. The saved source label uses the metadata name,
+falling back to the uploaded filename.
+
+First-seen film order is retained and duplicate normalized links collapse. Each
+pick is an independent random draw; positions do not weight it. Films with unknown
+types remain eligible under the movie filter. Invalid links/missing names are
+skipped; an empty or wholly invalid file fails and preserves the previous list.
+Both `https://letterboxd.com/film/.../` and `https://boxd.it/...` links are supported.
+The importer does not resolve short-link redirects, so a short link and its long
+alias can remain separate entries. Missing film details need no IMDb lookup.
+
+No ZIP upload, pasted-URL acquisition, merging, or extension import is included.
+Fixture sources and the fresh-account verification gap are recorded in
+[custom-list fixture provenance](tests/fixtures/CUSTOM-LISTS.md).
+
+Run the focused importer/storage checks from the repository root (Node 22.18+
+with TypeScript stripping, or the local Node 26 environment):
+
+```sh
+node --experimental-strip-types --test browser-app/tests/*.test.ts
+```
