@@ -1,0 +1,7 @@
+Position,Const,Created,Modified,Description,Title,Original Title,URL,Title Type,IMDb Rating,Runtime (mins),Year,Genres,Num Votes,Release Date,Directors,Your Rating,Date Rated
+1,tt0111161,2026-01-01,2026-01-01,"A note, with commas","The Shawshank Redemption",The Shawshank Redemption,https://www.imdb.com/title/tt0111161/,Movie,9.3,142,1994,Drama,3000000,1994-09-10,Frank Darabont,,
+2,tt0903747,2026-01-01,2026-01-01,"A note with
+an embedded newline",Breaking Bad,Breaking Bad,https://www.imdb.com/title/tt0903747/,TV Series,9.5,49,2008,"Crime, Drama",2000000,2008-01-20,Vince Gilligan,,
+3,tt0111161,2026-01-01,2026-01-01,Duplicate,The Shawshank Redemption,The Shawshank Redemption,https://www.imdb.com/title/tt0111161/,Movie,9.3,142,1994,Drama,3000000,1994-09-10,Frank Darabont,,
+4,tt0050083,2026-01-01,2026-01-01,,12 Angry Men,12 Angry Men,,Movie,9.0,96,1957,Drama,900000,1957-04-10,Sidney Lumet,,
+5,tt0000001,2026-01-01,2026-01-01,,Unknown metadata example,Unknown metadata example,https://www.imdb.com/title/tt0000001/,,,,,,,,,,

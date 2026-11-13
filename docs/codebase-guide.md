@@ -54,7 +54,7 @@ Paths below are relative to the repository root. Function names are navigation a
 
 ### Repository and deployment
 
-[`README.md`](../README.md) routes users to each client. [`AGENTS.md`](../AGENTS.md) routes future implementation work to these reference files. [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) installs with `npm ci` on Node 22, builds the browser app, uploads `browser-app/dist`, and deploys Pages. It runs on relevant `main` pushes or manual dispatch; it does not lint or build the extension. There is no automated test suite or test script in either application.
+[`README.md`](../README.md) routes users to each client. [`AGENTS.md`](../AGENTS.md) routes future implementation work to these reference files. [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) installs with `npm ci` on Node 22, builds the browser app, uploads `browser-app/dist`, and deploys Pages. It runs on relevant `main` pushes or manual dispatch; it does not lint or build the extension. Focused IMDb custom-list regression tests are available at `tests/imdb-custom-lists.test.mjs`; run with Node after installing browser dependencies. Neither application declares a test script.
 
 ## Browser import-to-pick flow
 
@@ -74,12 +74,12 @@ The CSV file is read locally, but picking can contact IMDb and image hosts; the 
 ## Extension import-to-pick flow
 
 1. `popup.js` gets status from the service worker. UI modes are `empty`, `importing`, `ready`, and `result`; progress persists independently in storage.
-2. `parseWatchlistUrl` accepts IMDb watchlist/user URLs, custom list URLs, and bare `ur...`, `p....`, or `ls...` identifiers. It returns `{kind, id, url}` with a canonical `www.imdb.com` URL. Existing custom list support is broader than the watchlist-centric UI wording.
+2. `parseWatchlistUrl` accepts IMDb watchlist/user URLs, custom list URLs, and bare `ur...`, `p....`, or `ls...` identifiers. It returns `{kind, id, url}` with a canonical `www.imdb.com` URL. Inputs are canonicalized; unrelated IMDb paths, credentials, and unsupported schemes are rejected. Popup copy explicitly supports watchlists and custom lists.
 3. Settings are saved to sync storage. Normal source/filter changes clear the local title cache and require import again. Starting an import from the toolbar requests a separate `popup.html?window=1` window so progress remains visible when IMDb takes focus.
 4. `runImport` shares one in-flight import promise within the current worker instance. It calls `fetchWatchlist` with `activateTab: true, keepTab: true`. Explicit imports focus and retain the IMDb tab. Ordinary pick/refresh fetches use the defaults and close a newly created temporary tab in `finally`; an existing tab can be navigated and is retained.
-5. `fetchWatchlist` finds/creates a matching tab, navigates to the canonical URL with detail/order/filter/page parameters, waits for completion (45-second timeout), then waits 800ms. It injects parameters into the page origin's `sessionStorage` under `imdb-scrape-params`, followed by `lib/injected-scrape.js`.
-6. The injected script reads `__NEXT_DATA__` first. It recognizes several `mainColumnData` list/search shapes and title-edge variants. First-page DOM extraction is a fallback. Later pages use credentialed, same-origin HTML fetches and require structured data.
-7. Pagination stops at the reported total, an empty batch, or the 100-page cap. Items are deduplicated by IMDb ID after collection, then filtered to movies if requested. DOM fallback uses the visible item count as its total and can therefore yield a partial list.
+5. `fetchWatchlist` finds/creates a matching tab, navigates to the canonical URL with detail/order/page parameters, waits for completion (45-second timeout), then waits 800ms. The source is read without a server-side movie filter; filtering follows complete acquisition. It injects parameters into the page origin's `sessionStorage` under `imdb-scrape-params`, followed by `lib/injected-scrape.js`.
+6. The injected script reads `__NEXT_DATA__` first. It recognizes several `mainColumnData` list/search shapes and title-edge variants. Every page requires recognizable structured data and an explicit total. Later pages use credentialed, same-origin HTML fetches. DOM-only pages fail clearly instead of supplying a partial pool.
+7. Pagination completes only when the unique IMDb ID count equals the explicit reported total. Repeated/empty/failed pages, changing/unknown totals and reaching the 100-page cap report an incomplete import without saving a partial pool. The full source is then filtered to movies if requested.
 8. The worker saves the list and progress. The popup observes local-storage changes, including from the separate panel window. Picking loads a usable cache or fetches again, then returns a random item for `showMovie`.
 
 ### Runtime message contract
@@ -93,7 +93,7 @@ The worker replies asynchronously and converts thrown errors into `{ok: false, e
 | `pickRandom` | `forceRefresh` | `ok`, `movie`, `total`, `cached` |
 | `refreshWatchlist` | None | `ok`, `total` |
 
-The `cached` reply flag is calculated from `!message.forceRefresh`; it does not prove a cache hit. `getStatus` reports stored counts without checking cache usability.
+The `cached` reply flag reflects an actual cache hit. `getStatus` reports counts only for a compatible, fresh cache.
 
 ## Data and persistence contracts
 
@@ -103,12 +103,12 @@ The browser's `Title` and the extension's plain title objects carry the same cor
 | --- | --- | --- |
 | Browser `localStorage`, `imdb-watchlist-picker-v1` | `StoredWatchlist`: `{items, moviesOnly, importedAt, fileName}` | No TTL or migration. Loader checks only that `items` is an array. Writes can throw; the key is scoped to the origin, not the repository URL path. |
 | Extension `chrome.storage.sync` | `watchlistSource` string and `moviesOnly` boolean | Synced settings are separate from the device-local title cache. |
-| Extension `chrome.storage.local` | `cachedWatchlist: {source, items, fetchedAt}`, `cachedAt`, `cacheVersion`; also `importState` and `importWindowId` | `source` is the parsed `{kind, id, url}`. Cache version is 2; TTL is one hour. |
+| Extension `chrome.storage.local` | `cachedWatchlist: {source, items, fetchedAt, moviesOnly, complete, sourceCount}`, `cachedAt`, `cacheVersion`; also `importState` and `importWindowId` | `source` is the parsed `{kind, id, url}`. Cache version is 3; TTL is one hour. |
 | IMDb page `sessionStorage` | `imdb-scrape-params: {baseUrl, kind, moviesOnly}` | Injection handoff only; separate from extension storage. |
 
 Browser `importedAt` is rewritten on filter changes and enrichment saves as well as imports, so it is not a reliable original-import timestamp. Extension `importState` merges fields such as `status`, `message`, `error`, `count`, and `updatedAt`; statuses are `idle`, `running`, `done`, and `error`.
 
-Extension cache usability requires matching canonical source URL, freshness, nonempty items, current cache version, and at least one item with plot, director, or Metascore. A sparse DOM-only list may therefore be fetched repeatedly. Cached items are already filtered; the cache key does not include `moviesOnly`, and correctness currently relies on the popup clearing cache when that setting changes. Provider work must revisit this assumption.
+Extension cache usability requires matching canonical source URL, movie filter, freshness, current cache version and confirmed completeness. Empty and metadata-sparse complete lists are valid. Source/filter settings are rechecked before saving a fetch result. Failed refresh retains the previous compatible cache; partial results are never saved. Version 2 caches require reimport; existing sync settings remain valid. See [IMDb custom-list verification](imdb-custom-lists.md) for tests and remaining live checks.
 
 ## Where to start a feature
 
@@ -148,4 +148,4 @@ One-off source checks also passed for CSV BOM/quoted fields/embedded newlines, I
 
 `npm audit --json` reported two high-severity dependency entries (`vite` and transitive `source-map-js`), with fixes available. This records the installed baseline, not a runtime exploit assessment; rerun the audit when doing dependency maintenance. No dependency changes were made during exploration.
 
-There are no committed CSV fixtures, scraper HTML fixtures, browser tests, or extension integration tests. Build/lint/syntax checks do not validate live IMDb behavior. Manual feature checks should cover importing and replacing a list, reload/restore, filtering to zero titles, repeated picks, clear, missing metadata, and enrichment failure. Extension checks additionally need load-unpacked Chrome, public/private sources, multiple pages, refresh/cache expiry, panel persistence when the toolbar closes, and failure recovery. Live scraping and JSONP were not exercised during this exploration.
+Synthetic IMDb custom-list CSV and structured-page fixtures plus module/mocked-worker regression tests are committed under `tests/`. These are not real export/live-page evidence. No browser UI test suite or live extension integration test is committed. A one-off headless Chromium custom-list UI check passed; see the [verification notes](imdb-custom-lists.md). Build/lint/syntax checks do not validate live IMDb behavior. Manual feature checks should cover importing and replacing a list, reload/restore, filtering to zero titles, repeated picks, clear, missing metadata, and enrichment failure. Extension checks additionally need load-unpacked Chrome, public/private sources, multiple pages, refresh/cache expiry, panel persistence when the toolbar closes, and failure recovery. Live scraping and JSONP were not exercised during this exploration.

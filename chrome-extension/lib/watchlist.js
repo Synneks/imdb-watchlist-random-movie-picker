@@ -1,5 +1,5 @@
 export function parseWatchlistUrl(input) {
-  const trimmed = input.trim();
+  const trimmed = typeof input === "string" ? input.trim().toLowerCase() : "";
   if (!trimmed) return null;
 
   if (/^ur\d{7,9}$/i.test(trimmed) || /^p\.[a-z0-9]+$/i.test(trimmed)) {
@@ -11,15 +11,16 @@ export function parseWatchlistUrl(input) {
   }
 
   try {
-    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.port) return null;
     if (url.hostname !== "www.imdb.com" && url.hostname !== "imdb.com") return null;
 
-    const listMatch = url.pathname.match(/\/list\/(ls\d{7,10})/i);
+    const listMatch = url.pathname.match(/^\/list\/(ls\d{7,10})\/?$/i);
     if (listMatch) {
       return { kind: "list", id: listMatch[1], url: `https://www.imdb.com/list/${listMatch[1]}/` };
     }
 
-    const userMatch = url.pathname.match(/\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))\/watchlist/i);
+    const userMatch = url.pathname.match(/^\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))\/watchlist\/?$/i);
     if (userMatch) {
       return {
         kind: "watchlist",
@@ -28,7 +29,7 @@ export function parseWatchlistUrl(input) {
       };
     }
 
-    const userOnly = url.pathname.match(/\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))/i);
+    const userOnly = url.pathname.match(/^\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))\/?$/i);
     if (userOnly) {
       return {
         kind: "watchlist",
@@ -52,7 +53,7 @@ function waitForTabComplete(tabId) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error("Timed out loading IMDb watchlist."));
+      reject(new Error("Timed out loading the IMDb list. Open it in IMDb and retry."));
     }, 45000);
 
     function listener(updatedTabId, info) {
@@ -79,15 +80,12 @@ function waitForTabComplete(tabId) {
   });
 }
 
-function buildStartUrl(parsed, moviesOnly) {
+function buildStartUrl(parsed) {
   const params = new URLSearchParams();
   if (parsed.kind === "watchlist") {
     params.set("view", "detail");
   } else {
     params.set("sort", "list_order,asc");
-  }
-  if (moviesOnly) {
-    params.set("title_type", "movie,tvMovie");
   }
   params.set("page", "1");
   return `${parsed.url}?${params.toString()}`;
@@ -95,8 +93,7 @@ function buildStartUrl(parsed, moviesOnly) {
 
 async function findExistingWatchlistTab(parsed) {
   const tabs = await chrome.tabs.query({ url: ["https://www.imdb.com/*", "https://imdb.com/*"] });
-  const prefix = parsed.url.replace(/\/$/, "");
-  return tabs.find((tab) => tab.url?.replace(/\/$/, "").startsWith(prefix)) ?? null;
+  return tabs.find((tab) => parseWatchlistUrl(tab.url)?.url === parsed.url) ?? null;
 }
 
 export async function fetchWatchlist(
@@ -105,7 +102,7 @@ export async function fetchWatchlist(
 ) {
   const parsed = typeof source === "string" ? parseWatchlistUrl(source) : source;
   if (!parsed?.url) {
-    throw new Error("Invalid watchlist URL or user ID.");
+    throw new Error("Invalid IMDb watchlist/custom-list URL or user/list ID.");
   }
 
   const scrapeParams = {
@@ -116,7 +113,7 @@ export async function fetchWatchlist(
 
   let tab = await findExistingWatchlistTab(parsed);
   let createdTab = false;
-  const startUrl = buildStartUrl(parsed, moviesOnly);
+  const startUrl = buildStartUrl(parsed);
 
   if (!tab?.id) {
     tab = await chrome.tabs.create({ url: startUrl, active: activateTab });
@@ -144,17 +141,18 @@ export async function fetchWatchlist(
     });
 
     if (injection?.error) {
-      throw new Error(injection.error.message || "Watchlist scrape failed.");
+      throw new Error(injection.error.message || "IMDb list import failed.");
     }
 
     const payload = injection?.result;
-    if (!payload || !Array.isArray(payload.items)) {
+    if (payload?.error) throw new Error(payload.error);
+    if (!payload || !Array.isArray(payload.items) || payload.complete !== true) {
       throw new Error(
-        "Could not read watchlist from IMDb. Open your watchlist while logged in and try again."
+        "Could not read a complete list from IMDb. Open the watchlist or custom list while logged in and retry Import or Refresh."
       );
     }
 
-    return { source: parsed, items: payload.items, fetchedAt: payload.fetchedAt ?? Date.now() };
+    return { source: parsed, items: payload.items, moviesOnly: Boolean(moviesOnly), complete: true, sourceCount: payload.sourceCount, fetchedAt: payload.fetchedAt ?? Date.now() };
   } finally {
     if (createdTab && !keepTab && tab?.id) {
       await chrome.tabs.remove(tab.id).catch(() => {});
