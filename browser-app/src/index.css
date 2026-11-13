@@ -435,12 +435,6 @@ body > * {
   color: var(--text);
 }
 
-:root[data-provider="letterboxd"] .picker {
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
 :root[data-provider="letterboxd"] .how-to h2 {
   color: #75caff;
 }
