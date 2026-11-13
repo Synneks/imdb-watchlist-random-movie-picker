@@ -158,6 +158,15 @@
       </p>
     </footer>
 
+    <script>
+      document.querySelectorAll(".info-card").forEach((card) => {
+        card.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof Element) || target.closest("summary, a, button, input, label")) return;
+          card.open = !card.open;
+        });
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

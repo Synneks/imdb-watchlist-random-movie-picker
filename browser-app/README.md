@@ -60,7 +60,7 @@ node --experimental-strip-types --test browser-app/tests/*.test.ts
 Use the IMDb / Letterboxd radio controls above the picker (Tab and arrow keys work).
 IMDb keeps its yellow theme; Letterboxd uses slate, green, and blue throughout the
 page. Import instructions and title links match the provider. The instructions and FAQ appear in
-matching cards that start collapsed and open by click or keyboard. Select the matching
+matching compact cards that start collapsed and toggle by clicking anywhere in the card or by using the keyboard summary. Select the matching
 provider before importing; a CSV from the other provider shows an error and keeps
 the current list.
 

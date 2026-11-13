@@ -307,7 +307,12 @@ body > * {
   padding: 36px 20px;
 }
 
+.faq.info-card {
+  margin-top: 16px;
+}
+
 .info-card {
+  padding: 14px 20px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -343,7 +348,7 @@ body > * {
 }
 
 .info-card[open] > summary {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .info-card[open] > summary::after {
