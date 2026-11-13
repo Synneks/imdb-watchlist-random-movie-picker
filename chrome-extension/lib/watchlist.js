@@ -1,28 +1,35 @@
 export function parseWatchlistUrl(input) {
-  const trimmed = typeof input === "string" ? input.trim().toLowerCase() : "";
+  const trimmed = typeof input === "string" ? input.trim() : "";
   if (!trimmed) return null;
 
   if (/^ur\d{7,9}$/i.test(trimmed) || /^p\.[a-z0-9]+$/i.test(trimmed)) {
-    return { kind: "watchlist", id: trimmed, url: `https://www.imdb.com/user/${trimmed}/watchlist` };
+    return { provider: "imdb", kind: "watchlist", id: trimmed, url: `https://www.imdb.com/user/${trimmed}/watchlist` };
   }
 
   if (/^ls\d{7,10}$/i.test(trimmed)) {
-    return { kind: "list", id: trimmed, url: `https://www.imdb.com/list/${trimmed}/` };
+    return { provider: "imdb", kind: "list", id: trimmed, url: `https://www.imdb.com/list/${trimmed}/` };
   }
 
   try {
     const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.port) return null;
+    if (url.hostname === "letterboxd.com" || url.hostname === "www.letterboxd.com") {
+      const match = url.pathname.match(/^\/([^/]+)\/list\/([^/]+)(?:\/page\/(\d+))?\/?$/i);
+      if (!match || ["films", "lists", "members", "settings"].includes(match[1].toLowerCase())) return null;
+      const path = `/${match[1]}/list/${match[2]}/`;
+      return { provider: "letterboxd", kind: "list", id: `${match[1]}/${match[2]}`, url: `https://letterboxd.com${path}` };
+    }
     if (url.hostname !== "www.imdb.com" && url.hostname !== "imdb.com") return null;
 
     const listMatch = url.pathname.match(/^\/list\/(ls\d{7,10})\/?$/i);
     if (listMatch) {
-      return { kind: "list", id: listMatch[1], url: `https://www.imdb.com/list/${listMatch[1]}/` };
+      return { provider: "imdb", kind: "list", id: listMatch[1], url: `https://www.imdb.com/list/${listMatch[1]}/` };
     }
 
     const userMatch = url.pathname.match(/^\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))\/watchlist\/?$/i);
     if (userMatch) {
       return {
+        provider: "imdb",
         kind: "watchlist",
         id: userMatch[1],
         url: `https://www.imdb.com/user/${userMatch[1]}/watchlist`,
@@ -32,6 +39,7 @@ export function parseWatchlistUrl(input) {
     const userOnly = url.pathname.match(/^\/user\/((?:ur\d{7,9}|p\.[a-z0-9]+))\/?$/i);
     if (userOnly) {
       return {
+        provider: "imdb",
         kind: "watchlist",
         id: userOnly[1],
         url: `https://www.imdb.com/user/${userOnly[1]}/watchlist`,
@@ -96,14 +104,33 @@ async function findExistingWatchlistTab(parsed) {
   return tabs.find((tab) => parseWatchlistUrl(tab.url)?.url === parsed.url) ?? null;
 }
 
+async function fetchLetterboxdList(parsed, { moviesOnly = false } = {}) {
+  const tab = await chrome.tabs.create({ url: parsed.url, active: false });
+  try {
+    await waitForTabComplete(tab.id);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const [injection] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["lib/letterboxd-scrape.js"] });
+    if (injection?.error) throw new Error(injection.error.message || "Letterboxd import failed.");
+    const payload = injection?.result;
+    if (payload?.error) throw new Error(payload.error);
+    if (!payload || payload.complete !== true || !Array.isArray(payload.items)) throw new Error("Could not verify a complete public Letterboxd list. Check its URL and visibility, then retry; no partial list was saved.");
+    let items = payload.items;
+    if (moviesOnly) items = items.filter((item) => !item.type || item.type === "movie" || item.type === "tvMovie");
+    return { source: parsed, items, moviesOnly: Boolean(moviesOnly), complete: true, sourceCount: payload.sourceCount, fetchedAt: Date.now() };
+  } finally {
+    if (tab?.id) await chrome.tabs.remove(tab.id).catch(() => {});
+  }
+}
+
 export async function fetchWatchlist(
   source,
   { moviesOnly = false, activateTab = false, keepTab = false } = {}
 ) {
   const parsed = typeof source === "string" ? parseWatchlistUrl(source) : source;
   if (!parsed?.url) {
-    throw new Error("Invalid IMDb watchlist/custom-list URL or user/list ID.");
+    throw new Error("Invalid IMDb or Letterboxd list URL or user/list ID.");
   }
+  if (parsed.provider === "letterboxd") return fetchLetterboxdList(parsed, { moviesOnly });
 
   const scrapeParams = {
     baseUrl: parsed.url.replace(/\/$/, ""),
