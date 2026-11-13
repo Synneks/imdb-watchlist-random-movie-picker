@@ -1,7 +1,7 @@
 import { fetchWatchlist, parseWatchlistUrl, pickRandom } from "../lib/watchlist.js";
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 let importInFlight = null;
 
@@ -22,7 +22,14 @@ async function getCachedWatchlist() {
   return { cachedWatchlist, cachedAt, cacheVersion };
 }
 
-async function saveCache(watchlist) {
+async function saveCache(watchlist, settings) {
+  const current = await getSettings();
+  if (
+    parseWatchlistUrl(current.watchlistSource)?.url !== parseWatchlistUrl(settings.watchlistSource)?.url ||
+    Boolean(current.moviesOnly) !== Boolean(settings.moviesOnly)
+  ) {
+    throw new Error("Source or filter changed during import. Retry Import or Refresh with the current settings.");
+  }
   await chrome.storage.local.set({
     cachedWatchlist: watchlist,
     cachedAt: Date.now(),
@@ -80,38 +87,37 @@ function cacheIsUsable(cachedWatchlist, cachedAt, cacheVersion, settings) {
   const sameSource =
     cachedWatchlist?.source?.url === parseWatchlistUrl(settings.watchlistSource)?.url;
   const fresh = Date.now() - cachedAt < CACHE_TTL_MS;
-  const hasItems = (cachedWatchlist?.items?.length ?? 0) > 0;
-  const hasDetails = cachedWatchlist?.items?.some(
-    (item) => item.plot != null || item.director != null || item.metascore != null
-  );
+  const hasPool = Array.isArray(cachedWatchlist?.items);
+  const sameFilter = cachedWatchlist?.moviesOnly === Boolean(settings.moviesOnly);
   return Boolean(
     cachedWatchlist &&
       sameSource &&
       fresh &&
-      hasItems &&
+      hasPool &&
       cacheVersion === CACHE_VERSION &&
-      hasDetails
+      sameFilter &&
+      cachedWatchlist.complete === true
   );
 }
 
 async function loadWatchlist(forceRefresh = false) {
   const settings = await getSettings();
   if (!settings.watchlistSource?.trim()) {
-    throw new Error("Paste your IMDb watchlist URL in the extension popup first.");
+    throw new Error("Paste an IMDb watchlist/custom-list or Letterboxd list URL in the extension popup first.");
   }
 
   if (!forceRefresh) {
     const { cachedWatchlist, cachedAt, cacheVersion } = await getCachedWatchlist();
     if (cacheIsUsable(cachedWatchlist, cachedAt, cacheVersion, settings)) {
-      return cachedWatchlist;
+      return { ...cachedWatchlist, cached: true };
     }
   }
 
   const watchlist = await fetchWatchlist(settings.watchlistSource, {
     moviesOnly: settings.moviesOnly,
   });
-  await saveCache(watchlist);
-  return watchlist;
+  await saveCache(watchlist, settings);
+  return { ...watchlist, cached: false };
 }
 
 async function runImport({ openPanel = false } = {}) {
@@ -122,15 +128,15 @@ async function runImport({ openPanel = false } = {}) {
   importInFlight = (async () => {
     const settings = await getSettings();
     if (!settings.watchlistSource?.trim()) {
-      throw new Error("Paste your IMDb watchlist URL first.");
+      throw new Error("Paste an IMDb or Letterboxd list URL first.");
     }
     if (!parseWatchlistUrl(settings.watchlistSource)) {
-      throw new Error("That does not look like a valid IMDb watchlist URL or ID.");
+      throw new Error("That does not look like a valid IMDb watchlist/custom-list or public Letterboxd list URL.");
     }
 
     await setImportState({
       status: "running",
-      message: "Opening your IMDb watchlist…",
+      message: "Opening your list…",
       error: "",
       count: 0,
     });
@@ -142,7 +148,7 @@ async function runImport({ openPanel = false } = {}) {
     try {
       await setImportState({
         status: "running",
-        message: "Importing titles from IMDb…",
+        message: "Importing titles from the list…",
       });
 
       const watchlist = await fetchWatchlist(settings.watchlistSource, {
@@ -151,22 +157,13 @@ async function runImport({ openPanel = false } = {}) {
         keepTab: true,
       });
 
-      await saveCache(watchlist);
-
-      if (!watchlist.items.length) {
-        await setImportState({
-          status: "error",
-          message: "Import finished, but no titles were found.",
-          error:
-            "No titles were found. Make sure you are logged into IMDb and the watchlist URL is correct.",
-          count: 0,
-        });
-        return { ok: false, count: 0 };
-      }
+      await saveCache(watchlist, settings);
 
       await setImportState({
         status: "done",
-        message: `Imported ${watchlist.items.length} titles`,
+        message: watchlist.items.length
+          ? `Imported ${watchlist.items.length} titles`
+          : "List read successfully; no titles match. Try disabling the movie filter.",
         error: "",
         count: watchlist.items.length,
       });
@@ -185,10 +182,10 @@ async function runImport({ openPanel = false } = {}) {
         count: 0,
       });
       throw error;
-    } finally {
-      importInFlight = null;
     }
-  })();
+  })().finally(() => {
+    importInFlight = null;
+  });
 
   return importInFlight;
 }
@@ -209,7 +206,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({
             ok: false,
             error:
-              "No titles were found. Import your watchlist first, or click Refresh watchlist.",
+              "No titles were found. Import your watchlist or custom list first, or click Refresh list.",
           });
           return;
         }
@@ -217,7 +214,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           ok: true,
           movie,
           total: watchlist.items.length,
-          cached: !message.forceRefresh,
+          cached: watchlist.cached,
         });
         return;
       }
@@ -225,7 +222,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.type === "refreshWatchlist") {
         await setImportState({
           status: "running",
-          message: "Refreshing watchlist…",
+          message: "Refreshing list…",
           error: "",
         });
         try {
@@ -250,16 +247,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       if (message.type === "getStatus") {
         const settings = await getSettings();
-        const { cachedWatchlist, cachedAt } = await getCachedWatchlist();
+        const { cachedWatchlist, cachedAt, cacheVersion } = await getCachedWatchlist();
+        const usable = cacheIsUsable(cachedWatchlist, cachedAt, cacheVersion, settings);
         const importState = await getImportState();
         sendResponse({
           ok: true,
           configured: Boolean(settings.watchlistSource?.trim()),
           watchlistSource: settings.watchlistSource,
           moviesOnly: settings.moviesOnly,
-          cachedCount: cachedWatchlist?.items?.length ?? 0,
-          cachedAt,
-          importState,
+          cachedCount: usable ? cachedWatchlist.items.length : 0,
+          cachedAt: usable ? cachedAt : 0,
+          importState: usable || importState.status === "running" || importState.status === "error"
+            ? importState
+            : { status: "idle", count: 0, message: "" },
         });
         return;
       }

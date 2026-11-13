@@ -14,7 +14,7 @@ const els = {
   plot: document.getElementById("plot"),
   credits: document.getElementById("credits"),
   poster: document.getElementById("poster"),
-  openImdb: document.getElementById("open-imdb"),
+  openTitle: document.getElementById("open-title"),
   error: document.getElementById("error"),
   primaryAction: document.getElementById("primary-action"),
   pickAgain: document.getElementById("pick-again"),
@@ -94,7 +94,7 @@ function renderMode() {
     els.primaryAction.textContent = "Pick random";
     els.refreshList.classList.remove("hidden");
   } else {
-    els.primaryAction.textContent = "Import watchlist";
+    els.primaryAction.textContent = "Import list";
     els.refreshList.classList.add("hidden");
   }
 
@@ -168,7 +168,8 @@ function showMovie(movie) {
     els.poster.removeAttribute("src");
   }
 
-  els.openImdb.href = movie.url ?? "#";
+  els.openTitle.href = movie.url ?? "#";
+  els.openTitle.textContent = movie.provider === "letterboxd" ? "Open on Letterboxd" : "Open on IMDb";
   uiMode = "result";
   renderMode();
 }
@@ -178,7 +179,9 @@ async function sendMessage(message) {
 }
 
 function applyImportState(importState, count = cachedCount) {
-  if (typeof importState?.count === "number") {
+  if (importState?.status === "running" || importState?.status === "error") {
+    cachedCount = count;
+  } else if (typeof importState?.count === "number") {
     cachedCount = importState.count;
   } else {
     cachedCount = count;
@@ -187,7 +190,7 @@ function applyImportState(importState, count = cachedCount) {
 
   if (status === "running") {
     uiMode = "importing";
-    els.importMessage.textContent = importState.message || "Importing watchlist…";
+    els.importMessage.textContent = importState.message || "Importing list…";
     els.status.textContent = importState.message || "Import in progress…";
     showError("");
     renderMode();
@@ -211,9 +214,11 @@ function applyImportState(importState, count = cachedCount) {
     showError("");
   } else {
     uiMode = "empty";
-    els.status.textContent = lastSaved.watchlistSource
-      ? "Paste URL, then import your watchlist"
-      : "Paste your watchlist URL above";
+    els.status.textContent = importState?.status === "done" && importState.message
+      ? importState.message
+      : lastSaved.watchlistSource
+      ? "Paste an IMDb or Letterboxd list URL, then import"
+      : "Paste an IMDb watchlist/custom-list or Letterboxd list URL above";
   }
   renderMode();
 }
@@ -236,12 +241,12 @@ async function loadSettings() {
   applyImportState(response.importState, cachedCount);
 }
 
-async function saveSettingsIfNeeded({ clearCache = true } = {}) {
+async function saveSettingsIfNeeded() {
   const watchlistSource = els.watchlistSource.value.trim();
   const moviesOnly = els.moviesOnly.checked;
 
   if (watchlistSource && !parseWatchlistUrl(watchlistSource)) {
-    throw new Error("That does not look like a valid IMDb watchlist URL or ID.");
+    throw new Error("That does not look like a valid IMDb watchlist/custom-list or public Letterboxd list URL.");
   }
 
   const changed =
@@ -252,10 +257,9 @@ async function saveSettingsIfNeeded({ clearCache = true } = {}) {
   }
 
   await chrome.storage.sync.set({ watchlistSource, moviesOnly });
-  if (clearCache) {
-    await chrome.storage.local.remove(["cachedWatchlist", "cachedAt", "cacheVersion"]);
-    cachedCount = 0;
-  }
+  await chrome.storage.local.remove(["cachedWatchlist", "cachedAt", "cacheVersion"]);
+  await chrome.storage.local.set({ importState: { status: "idle", count: 0, message: "" } });
+  cachedCount = 0;
   lastSaved = { watchlistSource, moviesOnly };
   return true;
 }
@@ -267,13 +271,13 @@ async function importWatchlist() {
     await saveSettingsIfNeeded();
   } catch (error) {
     showError(error.message ?? String(error));
-    els.status.textContent = "Fix watchlist URL";
+    els.status.textContent = "Fix list URL";
     return;
   }
 
   if (!els.watchlistSource.value.trim()) {
-    showError("Paste your IMDb watchlist URL above first.");
-    els.status.textContent = "Watchlist not configured";
+    showError("Paste an IMDb watchlist or custom-list URL or ID above first.");
+    els.status.textContent = "List not configured";
     return;
   }
 
@@ -282,7 +286,7 @@ async function importWatchlist() {
   els.status.textContent = "Starting import…";
   renderMode();
 
-  // Open a sticky panel window before IMDb steals focus (closes the toolbar popup).
+  // Open a sticky panel window while the source list loads (closes the toolbar popup).
   const openPanel = !isPanelWindow;
   const response = await sendMessage({ type: "importWatchlist", openPanel });
 
@@ -297,7 +301,7 @@ async function importWatchlist() {
   cachedCount = response.count ?? cachedCount;
   uiMode = cachedCount > 0 ? "ready" : "empty";
   els.status.textContent =
-    cachedCount > 0 ? `Imported ${cachedCount} titles` : "No titles found";
+    cachedCount > 0 ? `Imported ${cachedCount} titles` : "List read; no titles match. Try disabling the movie filter.";
   showError("");
   renderMode();
 }
@@ -306,10 +310,10 @@ async function pickRandom() {
   showError("");
 
   try {
-    await saveSettingsIfNeeded({ clearCache: false });
+    await saveSettingsIfNeeded();
   } catch (error) {
     showError(error.message ?? String(error));
-    els.status.textContent = "Fix watchlist URL";
+    els.status.textContent = "Fix list URL";
     return;
   }
 
@@ -325,7 +329,7 @@ async function pickRandom() {
     }
     showMovie(response.movie);
     cachedCount = response.total;
-    els.status.textContent = `${response.total} titles in watchlist`;
+    els.status.textContent = `${response.total} titles in list`;
   } finally {
     setControlsDisabled(false);
   }
@@ -338,13 +342,13 @@ async function refreshWatchlist() {
     await saveSettingsIfNeeded();
   } catch (error) {
     showError(error.message ?? String(error));
-    els.status.textContent = "Fix watchlist URL";
+    els.status.textContent = "Fix list URL";
     return;
   }
 
   uiMode = "importing";
-  els.importMessage.textContent = "Refreshing watchlist…";
-  els.status.textContent = "Refreshing watchlist…";
+  els.importMessage.textContent = "Refreshing list…";
+  els.status.textContent = "Refreshing list…";
   renderMode();
 
   const response = await sendMessage({ type: "refreshWatchlist" });
@@ -379,7 +383,7 @@ els.moviesOnly.addEventListener("change", async () => {
     if (changed) {
       cachedCount = 0;
       uiMode = "empty";
-      els.status.textContent = "Filter updated — import your watchlist again";
+      els.status.textContent = "Filter updated — import your list again";
       renderMode();
     }
     showError("");
@@ -396,8 +400,8 @@ els.watchlistSource.addEventListener("change", async () => {
       uiMode = "empty";
     }
     els.status.textContent = els.watchlistSource.value.trim()
-      ? "Watchlist saved — click Import watchlist"
-      : "Paste your watchlist URL above";
+      ? "List saved — click Import list"
+      : "Paste an IMDb watchlist/custom-list or Letterboxd list URL above";
     showError("");
     renderMode();
   } catch (error) {

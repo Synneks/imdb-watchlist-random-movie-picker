@@ -13,11 +13,11 @@
     </header>
 
     <section class="panel settings">
-      <label for="watchlist-source">Watchlist URL</label>
+      <label for="watchlist-source">IMDb watchlist/custom-list or public Letterboxd list URL</label>
       <input
         id="watchlist-source"
         type="text"
-        placeholder="https://www.imdb.com/user/…/watchlist"
+        placeholder="https://www.imdb.com/list/ls123456789/"
         autocomplete="off"
         spellcheck="false"
       />
@@ -31,7 +31,7 @@
       <div id="result" class="result hidden">
         <div class="actions">
           <button id="pick-again" type="button" class="btn primary large">Pick again</button>
-          <a id="open-imdb" class="btn secondary" href="#" target="_blank" rel="noopener">Open on IMDb</a>
+          <a id="open-title" class="btn secondary" href="#" target="_blank" rel="noopener">Open title page</a>
         </div>
         <div class="result-top">
           <img id="poster" alt="" class="poster hidden" />
@@ -47,12 +47,12 @@
 
       <div id="import-progress" class="import-progress hidden">
         <div class="spinner" aria-hidden="true"></div>
-        <p id="import-message">Importing watchlist…</p>
+        <p id="import-message">Importing list…</p>
       </div>
 
       <div id="idle" class="idle">
-        <button id="primary-action" type="button" class="btn primary large">Import watchlist</button>
-        <button id="refresh-list" type="button" class="btn link hidden">Refresh watchlist</button>
+        <button id="primary-action" type="button" class="btn primary large">Import list</button>
+        <button id="refresh-list" type="button" class="btn link hidden">Refresh list</button>
       </div>
     </main>
 
